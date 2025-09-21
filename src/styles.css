@@ -1,1 +1,13 @@
-/* You can add global styles to this file, and also import other style files */
+:root {
+  --primary-color: #d32f2f; /* rojo fuerte */
+  --primary-light: #f44336; /* rojo claro */
+  --accent-color: #ffebee;  /* fondo suave */
+  --text-dark: #212121;
+  --text-light: #ffffff;
+}
+
+body {
+  background-color: var(--accent-color);
+  margin: 0;
+  font-family: Roboto, Arial, sans-serif;
+}

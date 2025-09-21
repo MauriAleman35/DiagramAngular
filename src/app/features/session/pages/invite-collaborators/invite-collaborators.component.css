@@ -1,0 +1,38 @@
+.invite-container {
+  display: flex;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.invite-card {
+  width: 100%;
+  max-width: 600px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.invite-title {
+  text-align: center;
+  font-size: 1.8rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+  color: #444;
+}
+
+.invite-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+mat-form-field {
+  width: 100%;
+}

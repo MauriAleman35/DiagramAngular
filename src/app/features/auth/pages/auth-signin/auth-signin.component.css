@@ -1,0 +1,706 @@
+/* Variables de la paleta */
+:root {
+  --primary-color: #d32f2f;
+  --primary-light: #f44336;
+  --accent-color: #ffebee;
+  --text-dark: #212121;
+  --text-light: #ffffff;
+}
+
+/* Contenedor Principal */
+.auth-container {
+  display: flex;
+  min-height: 100vh;
+  background: var(--accent-color);
+}
+
+/* Sección Animación UML (Izquierda) */
+.animation-section {
+  flex: 1;
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+  padding: 2rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.animation-content {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 2;
+}
+
+/* Header de Animación */
+.animation-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.brand-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-light);
+  margin: 0 0 0.5rem 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.brand-subtitle {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+/* Controles de Animación UML */
+.animation-controls {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.control-group {
+  margin-bottom: 1.5rem;
+}
+
+.control-group:last-child {
+  margin-bottom: 0;
+}
+
+.control-label {
+  display: block;
+  color: var(--text-light);
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.schema-selector {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.schema-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 0.5rem;
+  color: var(--text-light);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+}
+
+.schema-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.schema-btn.active {
+  background: var(--text-light);
+  color: var(--primary-color);
+  border-color: var(--text-light);
+}
+
+.speed-control {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: var(--text-light);
+}
+
+.speed-slider {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.speed-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  background: var(--text-light);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.toggle-control {
+  display: flex;
+  align-items: center;
+  color: var(--text-light);
+}
+
+::ng-deep .mat-mdc-slide-toggle.mat-accent {
+  --mdc-switch-selected-track-color: rgba(255, 255, 255, 0.8);
+  --mdc-switch-selected-handle-color: var(--text-light);
+  --mdc-switch-selected-pressed-handle-color: var(--text-light);
+  --mdc-switch-selected-focus-handle-color: var(--text-light);
+  --mdc-switch-selected-hover-handle-color: var(--text-light);
+}
+
+/* Área de Animación UML */
+.animation-output {
+  flex: 1;
+  position: relative;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 1rem;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+  min-height: 400px;
+}
+
+.grid-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.3;
+  z-index: 1;
+}
+
+.database-schema {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  animation: schemaFloat 20s ease-in-out infinite;
+}
+
+@keyframes schemaFloat {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(10px, -5px) rotate(1deg); }
+  50% { transform: translate(-5px, 10px) rotate(-0.5deg); }
+  75% { transform: translate(-10px, -5px) rotate(0.5deg); }
+}
+
+/* Tablas de Base de Datos */
+.db-table {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  min-width: 180px;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  animation: tableAppear 2s ease-out infinite alternate;
+  transition: all 0.3s ease;
+}
+
+.db-table:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  border-color: var(--text-light);
+}
+
+.db-table.highlight {
+  border-color: #ffd700;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+}
+
+.user-table {
+  top: 20%;
+  left: 10%;
+  animation-delay: 0s;
+}
+
+.product-table {
+  top: 60%;
+  left: 15%;
+  animation-delay: 0.5s;
+}
+
+.order-table {
+  top: 35%;
+  right: 15%;
+  animation-delay: 1s;
+}
+
+@keyframes tableAppear {
+  0% { 
+    opacity: 0.8;
+    transform: translateY(0) scale(0.98);
+  }
+  100% { 
+    opacity: 1;
+    transform: translateY(-5px) scale(1);
+  }
+}
+
+.table-header {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+  color: var(--text-light);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  border-radius: 6px 6px 0 0;
+}
+
+.table-header mat-icon {
+  font-size: 18px !important;
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.table-fields {
+  padding: 8px;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--text-dark);
+  border-radius: 4px;
+  margin-bottom: 2px;
+  transition: background 0.2s ease;
+}
+
+.field:hover {
+  background: rgba(211, 47, 47, 0.1);
+}
+
+.field.primary-key {
+  background: rgba(255, 193, 7, 0.1);
+  border-left: 3px solid #ffc107;
+}
+
+.field.foreign-key {
+  background: rgba(33, 150, 243, 0.1);
+  border-left: 3px solid #2196f3;
+}
+
+.field mat-icon {
+  font-size: 14px !important;
+  width: 14px !important;
+  height: 14px !important;
+  color: #666;
+}
+
+.field small {
+  margin-left: auto;
+  background: #666;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.field.primary-key small {
+  background: #ffc107;
+  color: #333;
+}
+
+.field.foreign-key small {
+  background: #2196f3;
+}
+
+/* Relaciones SVG */
+.relations-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.relation-line {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.8);
+  stroke-width: 2;
+  stroke-dasharray: 5,5;
+  animation: relationPulse 3s ease-in-out infinite;
+}
+
+@keyframes relationPulse {
+  0%, 100% { 
+    stroke-opacity: 0.5;
+    stroke-width: 2;
+  }
+  50% { 
+    stroke-opacity: 1;
+    stroke-width: 3;
+  }
+}
+
+/* Partículas de Datos */
+.data-particles {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.data-particle {
+  position: absolute;
+  color: rgba(255, 255, 255, 0.7);
+  animation: dataFloat 8s linear infinite;
+}
+
+.data-particle mat-icon {
+  font-size: 16px !important;
+  width: 16px !important;
+  height: 16px !important;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.3));
+}
+
+@keyframes dataFloat {
+  0% {
+    opacity: 0;
+    transform: translateY(100vh) scale(0) rotate(0deg);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(90vh) scale(1) rotate(90deg);
+  }
+  90% {
+    opacity: 1;
+    transform: translateY(-10vh) scale(1) rotate(270deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-20vh) scale(0) rotate(360deg);
+  }
+}
+
+/* Estadísticas del Esquema */
+.schema-stats {
+  display: flex;
+  gap: 1rem;
+}
+
+.stat-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 1rem;
+  border-radius: 0.75rem;
+  color: var(--text-light);
+  backdrop-filter: blur(10px);
+}
+
+.stat-item mat-icon {
+  font-size: 1.5rem !important;
+  width: 1.5rem !important;
+  height: 1.5rem !important;
+}
+
+.stat-number {
+  display: block;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.8rem;
+  opacity: 0.9;
+}
+
+/* Sección Login (Derecha) */
+.login-section {
+  flex: 0 0 450px;
+  background: var(--text-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  box-shadow: -4px 0 20px rgba(211, 47, 47, 0.1);
+}
+
+.login-content {
+  width: 100%;
+  max-width: 380px;
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.login-icon {
+  font-size: 4rem !important;
+  width: 4rem !important;
+  height: 4rem !important;
+  color: var(--primary-color);
+  margin-bottom: 1rem;
+}
+
+.login-header h2 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin: 0 0 0.5rem 0;
+}
+
+.login-header p {
+  color: #666;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+/* Formulario */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.full-width {
+  width: 100%;
+}
+
+/* Personalización Angular Material */
+::ng-deep .mat-mdc-form-field-outline {
+  border-radius: 0.5rem !important;
+}
+
+::ng-deep .mat-mdc-form-field-outline-thick {
+  border-color: var(--primary-color) !important;
+}
+
+::ng-deep .mat-mdc-form-field-label {
+  color: var(--text-dark) !important;
+}
+
+::ng-deep .mat-primary {
+  --mdc-checkbox-selected-checkmark-color: var(--text-light);
+  --mdc-checkbox-selected-focus-state-layer-color: var(--primary-color);
+  --mdc-checkbox-selected-hover-state-layer-color: var(--primary-color);
+  --mdc-checkbox-selected-pressed-state-layer-color: var(--primary-color);
+  --mdc-checkbox-unselected-focus-state-layer-color: var(--text-dark);
+  --mdc-checkbox-unselected-hover-state-layer-color: var(--text-dark);
+  --mdc-checkbox-unselected-pressed-state-layer-color: var(--text-dark);
+}
+
+.login-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: -0.5rem 0;
+}
+
+.forgot-password {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.forgot-password:hover {
+  text-decoration: underline;
+}
+
+.login-button {
+  width: 100% !important;
+  height: 3rem !important;
+  background: var(--primary-color) !important;
+  color: var(--text-light) !important;
+  border-radius: 0.5rem !important;
+  font-weight: 600 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+  box-shadow: 0 4px 12px rgba(211, 47, 47, 0.3) !important;
+}
+
+.login-button:hover {
+  background: var(--primary-light) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(211, 47, 47, 0.4) !important;
+}
+
+.login-spinner {
+  margin-right: 0.5rem !important;
+}
+
+/* Mensajes */
+.error-message,
+.success-message {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.error-message {
+  background: #ffebee;
+  color: var(--primary-color);
+  border: 1px solid #ffcdd2;
+}
+
+.success-message {
+  background: #e8f5e8;
+  color: #2e7d32;
+  border: 1px solid #c8e6c9;
+}
+
+/* Divider */
+.divider {
+  text-align: center;
+  margin: 2rem 0;
+  position: relative;
+  color: #999;
+  font-size: 0.9rem;
+}
+
+.divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #e0e0e0;
+  z-index: 1;
+}
+
+.divider span {
+  background: var(--text-light);
+  padding: 0 1rem;
+  position: relative;
+  z-index: 2;
+}
+
+/* Sección Registro */
+.register-section {
+  text-align: center;
+}
+
+.register-section p {
+  color: #666;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+}
+
+.register-button {
+  width: 100% !important;
+  height: 2.5rem !important;
+  border-color: var(--primary-color) !important;
+  color: var(--primary-color) !important;
+  border-radius: 0.5rem !important;
+  font-weight: 500 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+}
+
+.register-button:hover {
+  background: var(--accent-color) !important;
+  transform: translateY(-1px);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .auth-container {
+    flex-direction: column;
+  }
+  
+  .animation-section {
+    flex: none;
+    height: 50vh;
+    padding: 1rem;
+  }
+  
+  .login-section {
+    flex: none;
+    height: 50vh;
+  }
+  
+  .animation-controls {
+    padding: 1rem;
+  }
+  
+  .brand-title {
+    font-size: 2rem;
+  }
+  
+  .user-table {
+    top: 15%;
+    left: 8%;
+  }
+  
+  .product-table {
+    top: 55%;
+    left: 12%;
+  }
+  
+  .order-table {
+    top: 30%;
+    right: 12%;
+  }
+}
+
+@media (max-width: 768px) {
+  .animation-section,
+  .login-section {
+    padding: 1rem;
+  }
+  
+  .login-section {
+    flex: none;
+  }
+  
+  .schema-selector {
+    flex-direction: column;
+  }
+  
+  .schema-stats {
+    flex-direction: column;
+  }
+  
+  .db-table {
+    min-width: 160px;
+    transform: scale(0.9);
+  }
+  
+  .animation-output {
+    min-height: 300px;
+  }
+}
+
+@media (max-width: 480px) {
+  .brand-title {
+    font-size: 1.8rem;
+  }
+  
+  .db-table {
+    min-width: 140px;
+    transform: scale(0.8);
+  }
+  
+  .table-header {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  
+  .field {
+    font-size: 11px;
+    padding: 4px 6px;
+  }
+}

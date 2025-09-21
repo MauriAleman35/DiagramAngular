@@ -1,0 +1,329 @@
+<div class="auth-container">
+  <!-- Sección Izquierda - Animación UML Database -->
+  <div class="animation-section">
+    <div class="animation-content">
+      <!-- Header -->
+      <div class="animation-header">
+        <h1 class="brand-title">UML DB</h1>
+        <p class="brand-subtitle">Diseña tu base de datos colaborativamente</p>
+      </div>
+
+      <!-- Controles de Animación -->
+      <div class="animation-controls">
+        <div class="control-group">
+          <label class="control-label">Esquema</label>
+          <div class="schema-selector">
+            <button class="schema-btn" 
+                    [class.active]="selectedSchema === 'ecommerce'"
+                    (click)="selectSchema('ecommerce')">
+              <mat-icon>shopping_cart</mat-icon>
+              <span>E-commerce</span>
+            </button>
+            <button class="schema-btn" 
+                    [class.active]="selectedSchema === 'university'"
+                    (click)="selectSchema('university')">
+              <mat-icon>school</mat-icon>
+              <span>Universidad</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Velocidad de Animación</label>
+          <div class="speed-control">
+            <mat-icon>slow_motion_video</mat-icon>
+            <input type="range" 
+                   min="1" 
+                   max="5" 
+                   [(ngModel)]="animationSpeed"
+                   name="speed"
+                   class="speed-slider">
+            <mat-icon>fast_forward</mat-icon>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Mostrar Relaciones</label>
+          <div class="toggle-control">
+            <mat-slide-toggle 
+              [(ngModel)]="showRelations" 
+              name="relations"
+              color="accent">
+              {{showRelations ? 'Activas' : 'Ocultas'}}
+            </mat-slide-toggle>
+          </div>
+        </div>
+      </div>
+
+      <!-- Área de Animación UML -->
+      <div class="animation-output">
+        <!-- Tablas de Base de Datos -->
+        <div class="database-schema" [style.animation-duration.s]="6 - animationSpeed">
+          
+          <!-- Tabla Usuario -->
+          <div class="db-table user-table" 
+               [class.highlight]="highlightedTable === 'users'"
+               [style.animation-delay.s]="0">
+            <div class="table-header">
+              <mat-icon>person</mat-icon>
+              <span>{{ selectedSchema === 'ecommerce' ? 'Users' : 'Students' }}</span>
+            </div>
+            <div class="table-fields">
+              <div class="field primary-key">
+                <mat-icon>key</mat-icon>
+                <span>id</span>
+                <small>PK</small>
+              </div>
+              <div class="field">
+                <span>{{ selectedSchema === 'ecommerce' ? 'email' : 'student_code' }}</span>
+              </div>
+              <div class="field">
+                <span>{{ selectedSchema === 'ecommerce' ? 'username' : 'full_name' }}</span>
+              </div>
+              <div class="field">
+                <span>created_at</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabla Productos/Cursos -->
+          <div class="db-table product-table"
+               [class.highlight]="highlightedTable === 'products'"
+               [style.animation-delay.s]="0.5">
+            <div class="table-header">
+              <mat-icon>{{ selectedSchema === 'ecommerce' ? 'inventory' : 'book' }}</mat-icon>
+              <span>{{ selectedSchema === 'ecommerce' ? 'Products' : 'Courses' }}</span>
+            </div>
+            <div class="table-fields">
+              <div class="field primary-key">
+                <mat-icon>key</mat-icon>
+                <span>id</span>
+                <small>PK</small>
+              </div>
+              <div class="field">
+                <span>{{ selectedSchema === 'ecommerce' ? 'name' : 'course_name' }}</span>
+              </div>
+              <div class="field">
+                <span>{{ selectedSchema === 'ecommerce' ? 'price' : 'credits' }}</span>
+              </div>
+              <div class="field foreign-key">
+                <mat-icon>link</mat-icon>
+                <span>{{ selectedSchema === 'ecommerce' ? 'category_id' : 'professor_id' }}</span>
+                <small>FK</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabla Órdenes/Inscripciones -->
+          <div class="db-table order-table"
+               [class.highlight]="highlightedTable === 'orders'"
+               [style.animation-delay.s]="1">
+            <div class="table-header">
+              <mat-icon>{{ selectedSchema === 'ecommerce' ? 'receipt' : 'assignment' }}</mat-icon>
+              <span>{{ selectedSchema === 'ecommerce' ? 'Orders' : 'Enrollments' }}</span>
+            </div>
+            <div class="table-fields">
+              <div class="field primary-key">
+                <mat-icon>key</mat-icon>
+                <span>id</span>
+                <small>PK</small>
+              </div>
+              <div class="field foreign-key">
+                <mat-icon>link</mat-icon>
+                <span>{{ selectedSchema === 'ecommerce' ? 'user_id' : 'student_id' }}</span>
+                <small>FK</small>
+              </div>
+              <div class="field foreign-key">
+                <mat-icon>link</mat-icon>
+                <span>{{ selectedSchema === 'ecommerce' ? 'product_id' : 'course_id' }}</span>
+                <small>FK</small>
+              </div>
+              <div class="field">
+                <span>{{ selectedSchema === 'ecommerce' ? 'total' : 'grade' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Relaciones -->
+          <svg class="relations-svg" *ngIf="showRelations">
+            <defs>
+              <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+                      refX="9" refY="3.5" orient="auto" fill="rgba(255,255,255,0.8)">
+                <polygon points="0 0, 10 3.5, 0 7" />
+              </marker>
+            </defs>
+            
+            <!-- Relación User -> Orders -->
+            <path class="relation-line" 
+                  d="M 120 150 Q 200 100 280 150"
+                  [style.animation-delay.s]="1.5"
+                  marker-end="url(#arrowhead)">
+            </path>
+            
+            <!-- Relación Products -> Orders -->
+            <path class="relation-line"
+                  d="M 120 300 Q 200 250 280 200"
+                  [style.animation-delay.s]="2"
+                  marker-end="url(#arrowhead)">
+            </path>
+          </svg>
+        </div>
+
+        <!-- Partículas de Datos -->
+        <div class="data-particles">
+          <div *ngFor="let particle of dataParticles; let i = index"
+               class="data-particle"
+               [style.left.%]="particle.x"
+               [style.top.%]="particle.y"
+               [style.animation-delay.s]="i * 0.3">
+            <mat-icon>{{ particle.icon }}</mat-icon>
+          </div>
+        </div>
+
+        <!-- Grid de Fondo -->
+        <div class="grid-background">
+          <svg width="100%" height="100%">
+            <defs>
+              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+          </svg>
+        </div>
+      </div>
+
+      <!-- Estadísticas del Esquema -->
+      <div class="schema-stats">
+        <div class="stat-item">
+          <mat-icon>table_chart</mat-icon>
+          <div>
+            <span class="stat-number">{{ getCurrentSchema().tables }}</span>
+            <span class="stat-label">Tablas</span>
+          </div>
+        </div>
+        <div class="stat-item">
+          <mat-icon>account_tree</mat-icon>
+          <div>
+            <span class="stat-number">{{ getCurrentSchema().relations }}</span>
+            <span class="stat-label">Relaciones</span>
+          </div>
+        </div>
+        <div class="stat-item">
+          <mat-icon>storage</mat-icon>
+          <div>
+            <span class="stat-number">{{ getCurrentSchema().fields }}</span>
+            <span class="stat-label">Campos</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sección Derecha - Login -->
+  <div class="login-section">
+    <div class="login-content">
+      <div class="login-header">
+        <mat-icon class="login-icon">account_circle</mat-icon>
+        <h2>Iniciar Sesión</h2>
+        <p>Accede a tu cuenta para continuar</p>
+      </div>
+
+      <form (ngSubmit)="onLogin()" class="login-form" #loginForm="ngForm">
+        
+        <!-- Campo Email -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Correo Electrónico</mat-label>
+          <input matInput 
+                 type="email" 
+                 [(ngModel)]="email"
+                 name="email"
+                 #emailInput="ngModel"
+                 [disabled]="isLoading"
+                 required
+                 email
+                 placeholder="tu@email.com">
+          <mat-icon matSuffix>email</mat-icon>
+          <mat-error *ngIf="emailInput.invalid && emailInput.touched">
+            <span *ngIf="emailInput.errors?.['required']">El email es requerido</span>
+            <span *ngIf="emailInput.errors?.['email']">Ingresa un email válido</span>
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Campo Contraseña -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Contraseña</mat-label>
+          <input matInput 
+                 [type]="hidePassword ? 'password' : 'text'"
+                 [(ngModel)]="password"
+                 name="password"
+                 #passwordInput="ngModel"
+                 [disabled]="isLoading"
+                 required
+                 minlength="6"
+                 placeholder="Tu contraseña">
+          <button mat-icon-button 
+                  matSuffix 
+                  type="button"
+                  (click)="togglePasswordVisibility()"
+                  [attr.aria-label]="'Toggle password visibility'">
+            <mat-icon>{{hidePassword ? 'visibility_off' : 'visibility'}}</mat-icon>
+          </button>
+          <mat-error *ngIf="passwordInput.invalid && passwordInput.touched">
+            <span *ngIf="passwordInput.errors?.['required']">La contraseña es requerida</span>
+            <span *ngIf="passwordInput.errors?.['minlength']">Mínimo 6 caracteres</span>
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Opciones -->
+        <div class="login-options">
+          <mat-checkbox [(ngModel)]="rememberMe" name="rememberMe" color="primary">
+            Recordar sesión
+          </mat-checkbox>
+          <a href="#" class="forgot-password" (click)="forgotPassword($event)">
+            ¿Olvidaste tu contraseña?
+          </a>
+        </div>
+
+        <!-- Botón Login -->
+        <button mat-raised-button 
+                color="primary" 
+                type="submit"
+                class="login-button"
+                [disabled]="loginForm.invalid || isLoading">
+          <mat-spinner diameter="20" *ngIf="isLoading" class="login-spinner"></mat-spinner>
+          <mat-icon *ngIf="!isLoading">login</mat-icon>
+          <span>{{isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}}</span>
+        </button>
+
+        <!-- Mensajes -->
+        <div *ngIf="errorMessage" class="error-message">
+          <mat-icon>error</mat-icon>
+          <span>{{errorMessage}}</span>
+        </div>
+
+        <div *ngIf="successMessage" class="success-message">
+          <mat-icon>check_circle</mat-icon>
+          <span>{{successMessage}}</span>
+        </div>
+      </form>
+
+      <!-- Divider -->
+      <div class="divider">
+        <span>o</span>
+      </div>
+
+      <!-- Registro -->
+      <div class="register-section">
+        <p>¿No tienes cuenta?</p>
+        <button mat-stroked-button 
+                color="primary" 
+                class="register-button"
+                (click)="goToRegister()">
+          <mat-icon>person_add</mat-icon>
+          <span>Crear Cuenta</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

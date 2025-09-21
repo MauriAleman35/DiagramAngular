@@ -1,0 +1,68 @@
+<div class="sessions-container">
+  <!-- Header -->
+  <div class="header-section">
+    <h1 class="page-title">Sesiones como anfitrión</h1>
+    <p class="page-description">Administra y controla tus sesiones de modelado colaborativo.</p>
+  </div>
+
+  <!-- Buscador -->
+  <div class="search-section">
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Buscar mis sesiones</mat-label>
+      <input matInput placeholder="Busca por nombre o descripción..."
+             [(ngModel)]="searchTerm"
+             (input)="onSearch()" />
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+  </div>
+
+  <!-- Lista de sesiones -->
+  <div class="sessions-grid" *ngIf="filteredSessions.length > 0; else noSessions">
+    <mat-card class="session-card" *ngFor="let session of filteredSessions">
+      <mat-card-header>
+        <div mat-card-avatar class="session-avatar host-avatar">
+          <mat-icon>schema</mat-icon>
+        </div>
+        <mat-card-title>{{ session.name }}</mat-card-title>
+        <mat-card-subtitle>Creada el {{ session.createdAt | date: 'short' }}</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <p class="session-description">{{ session.description }}</p>
+        <div class="session-info">
+          <!-- <div class="info-item">
+            <mat-icon>people</mat-icon>
+            <span>{{ session.userSessions?.length || 0 }} colaboradores</span>
+          </div>
+          <div class="info-item">
+            <mat-icon>table_chart</mat-icon>
+            <span>{{ session.diagrams?.length || 0 }} diagramas</span>
+          </div> -->
+        </div>
+      </mat-card-content>
+
+      <mat-card-actions>
+        <button mat-raised-button color="primary" (click)="openSession(session.id)">
+          <mat-icon>arrow_circle_right</mat-icon> Ingresar
+        </button>
+        <button mat-button (click)="manageCollaborators(session.id)">
+          <mat-icon>people</mat-icon> Colaboradores
+        </button>
+    
+       
+      </mat-card-actions>
+    </mat-card>
+  </div>
+
+  <!-- Estado vacío -->
+  <ng-template #noSessions>
+    <div class="empty-state">
+      <mat-icon class="empty-icon">workspace_premium</mat-icon>
+      <h3>No tienes sesiones creadas</h3>
+      <p>Crea tu primera sesión de modelado colaborativo para comenzar.</p>
+      <button mat-raised-button color="primary" class="create-session-btn">
+        <mat-icon>add</mat-icon> Crear primera sesión
+      </button>
+    </div>
+  </ng-template>
+</div>

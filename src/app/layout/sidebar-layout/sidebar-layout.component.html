@@ -1,0 +1,59 @@
+<div class="shell">
+  <!-- Overlay para móvil -->
+  <div class="sidebar-overlay" 
+       [class.visible]="isMobile && sidebarOpen" 
+       (click)="closeSidebar()"></div>
+  
+  <!-- Sidebar -->
+  <div class="side" 
+       [class.mobile-hidden]="isMobile && !sidebarOpen"
+       [class.mobile-visible]="isMobile && sidebarOpen">
+    <div class="brand">
+      <mat-icon>schema</mat-icon>
+      <span>UML DB</span>
+    </div>
+    
+    <mat-nav-list>
+      <a mat-list-item
+         *ngFor="let item of nav"
+         [routerLink]="item.link"
+         routerLinkActive="active"
+         #rla="routerLinkActive"
+         [attr.aria-current]="rla.isActive ? 'page' : null"
+         (click)="onNavClick()">
+        <mat-icon>{{ item.icon }}</mat-icon>
+        <span>{{ item.label }}</span>
+      </a>
+    </mat-nav-list>
+    
+    <div class="side-footer">
+      <button type="button" (click)="logout()">
+        <mat-icon>logout</mat-icon>
+        <span>Cerrar Session</span>
+      </button>
+    </div>
+  </div>
+  
+  <!-- Contenido principal -->
+  <div class="content" [class.mobile-full]="isMobile">
+    <mat-toolbar class="topbar">
+      <button mat-icon-button 
+              class="hamburger-btn"
+              (click)="toggleSidebar()">
+        <mat-icon>menu</mat-icon>
+      </button>
+      
+      <span class="title">{{ title }}</span>
+      <span class="spacer"></span>
+      
+      <button mat-raised-button class="btn-primary" (click)="createSession()">
+        <mat-icon>add</mat-icon>
+        <span>Crear sesión</span>
+      </button>
+    </mat-toolbar>
+    
+    <div class="page">
+      <router-outlet></router-outlet>
+    </div>
+  </div>
+</div>

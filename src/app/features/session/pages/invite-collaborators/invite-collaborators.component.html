@@ -1,0 +1,38 @@
+<div class="invite-container">
+  <mat-card class="invite-card">
+    <mat-card-header>
+      <mat-card-title class="invite-title">Invitar colaboradores</mat-card-title>
+      <mat-card-subtitle>Comparte tu sesión con otros usuarios</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <form [formGroup]="form" class="invite-form">
+        <!-- Selector de sesión -->
+        <mat-form-field appearance="outline">
+          <mat-label>Selecciona una sesión *</mat-label>
+          <mat-select formControlName="sessionId">
+            <mat-option *ngFor="let session of sessions" [value]="session.id">
+              {{ session.name }}
+            </mat-option>
+          </mat-select>
+          <mat-error *ngIf="form.controls.sessionId?.invalid">Campo obligatorio</mat-error>
+        </mat-form-field>
+
+        <!-- Correo electrónico -->
+        <mat-form-field appearance="outline">
+          <mat-label>Correo del colaborador *</mat-label>
+          <input matInput formControlName="email" type="email" placeholder="colaborador@ejemplo.com" />
+          <mat-error *ngIf="form.controls.email?.invalid">Correo inválido</mat-error>
+        </mat-form-field>
+
+        <!-- Botón enviar -->
+        <div class="form-actions">
+          <button mat-raised-button color="primary" (click)="send()" [disabled]="loading || form.invalid">
+            <mat-icon>send</mat-icon>
+            Enviar invitación
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>

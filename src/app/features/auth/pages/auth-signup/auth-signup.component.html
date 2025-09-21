@@ -1,0 +1,265 @@
+<div class="auth-container">
+  <!-- Sección Izquierda - Animación -->
+  <div class="animation-section">
+    <div class="animation-content">
+      <div class="animation-header">
+        <h1 class="brand-title">Únete a Nosotros</h1>
+        <p class="brand-subtitle">Crea tu cuenta y comienza tu experiencia</p>
+      </div>
+
+      <!-- Progreso de Registro -->
+      <div class="progress-section">
+        <div class="progress-bar">
+          <div class="progress-fill" [style.width.%]="getProgressPercentage()"></div>
+        </div>
+        <div class="progress-steps">
+          <div class="step" [class.active]="currentStep >= 1" [class.completed]="currentStep > 1">
+            <mat-icon>person</mat-icon>
+            <span>Datos</span>
+          </div>
+          <div class="step" [class.active]="currentStep >= 2" [class.completed]="currentStep > 2">
+            <mat-icon>security</mat-icon>
+            <span>Seguridad</span>
+          </div>
+          <div class="step" [class.active]="currentStep >= 3">
+            <mat-icon>check_circle</mat-icon>
+            <span>Listo</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Beneficios -->
+      <div class="benefits-section">
+        <h3>¿Por qué registrarte?</h3>
+        <div class="benefit-item">
+          <mat-icon>security</mat-icon>
+          <div>
+            <h4>Seguridad Avanzada</h4>
+            <p>Protección de datos con encriptación de nivel empresarial</p>
+          </div>
+        </div>
+        <div class="benefit-item">
+          <mat-icon>cloud_sync</mat-icon>
+          <div>
+            <h4>Sincronización</h4>
+            <p>Accede a tus datos desde cualquier dispositivo</p>
+          </div>
+        </div>
+        <div class="benefit-item">
+          <mat-icon>support_agent</mat-icon>
+          <div>
+            <h4>Soporte 24/7</h4>
+            <p>Asistencia técnica cuando la necesites</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Estadísticas -->
+      <div class="stats-section">
+        <div class="stat-item">
+          <span class="stat-number">10K+</span>
+          <span class="stat-label">Usuarios</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number">99.9%</span>
+          <span class="stat-label">Uptime</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number">24/7</span>
+          <span class="stat-label">Soporte</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sección Derecha - Formulario -->
+  <div class="signup-section">
+    <div class="signup-content">
+      <div class="signup-header">
+        <mat-icon class="signup-icon">person_add</mat-icon>
+        <h2>Crear Cuenta</h2>
+        <p>Completa los siguientes datos para registrarte</p>
+      </div>
+
+      <form (ngSubmit)="onSignup()" class="signup-form" #signupForm="ngForm">
+        
+        <!-- Nombre Completo -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Nombre Completo</mat-label>
+          <input matInput 
+                 type="text" 
+                 [(ngModel)]="fullName"
+                 name="fullName"
+                 #nameInput="ngModel"
+                 [disabled]="isLoading"
+                 required
+                 minlength="2"
+                 placeholder="Tu nombre completo">
+          <mat-icon matSuffix>person</mat-icon>
+          <mat-error *ngIf="nameInput.invalid && nameInput.touched">
+            <span *ngIf="nameInput.errors?.['required']">El nombre es requerido</span>
+            <span *ngIf="nameInput.errors?.['minlength']">Mínimo 2 caracteres</span>
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Email -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Correo Electrónico</mat-label>
+          <input matInput 
+                 type="email" 
+                 [(ngModel)]="email"
+                 name="email"
+                 #emailInput="ngModel"
+                 [disabled]="isLoading"
+                 required
+                 email
+                 placeholder="tu@email.com">
+          <mat-icon matSuffix>email</mat-icon>
+          <mat-error *ngIf="emailInput.invalid && emailInput.touched">
+            <span *ngIf="emailInput.errors?.['required']">El email es requerido</span>
+            <span *ngIf="emailInput.errors?.['email']">Ingresa un email válido</span>
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Teléfono -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Teléfono</mat-label>
+          <input matInput 
+                 type="tel" 
+                 [(ngModel)]="phone"
+                 name="phone"
+                 #phoneInput="ngModel"
+                 [disabled]="isLoading"
+                 required
+                 pattern="[0-9]{10,}"
+                 placeholder="+1 234 567 8900">
+          <mat-icon matSuffix>phone</mat-icon>
+          <mat-error *ngIf="phoneInput.invalid && phoneInput.touched">
+            <span *ngIf="phoneInput.errors?.['required']">El teléfono es requerido</span>
+            <span *ngIf="phoneInput.errors?.['pattern']">Formato de teléfono inválido</span>
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Contraseña -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Contraseña</mat-label>
+          <input matInput 
+                 [type]="hidePassword ? 'password' : 'text'"
+                 [(ngModel)]="password"
+                 name="password"
+                 #passwordInput="ngModel"
+                 [disabled]="isLoading"
+                 required
+                 minlength="8"
+                 pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
+                 placeholder="Tu contraseña">
+          <button mat-icon-button 
+                  matSuffix 
+                  type="button"
+                  (click)="togglePasswordVisibility()"
+                  [attr.aria-label]="'Toggle password visibility'">
+            <mat-icon>{{hidePassword ? 'visibility_off' : 'visibility'}}</mat-icon>
+          </button>
+          <mat-error *ngIf="passwordInput.invalid && passwordInput.touched">
+            <span *ngIf="passwordInput.errors?.['required']">La contraseña es requerida</span>
+            <span *ngIf="passwordInput.errors?.['minlength']">Mínimo 8 caracteres</span>
+            <span *ngIf="passwordInput.errors?.['pattern']">Debe contener mayúscula, minúscula, número y símbolo</span>
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Confirmar Contraseña -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Confirmar Contraseña</mat-label>
+          <input matInput 
+                 [type]="hideConfirmPassword ? 'password' : 'text'"
+                 [(ngModel)]="confirmPassword"
+                 name="confirmPassword"
+                 #confirmPasswordInput="ngModel"
+                 [disabled]="isLoading"
+                 required
+                 placeholder="Confirma tu contraseña">
+          <button mat-icon-button 
+                  matSuffix 
+                  type="button"
+                  (click)="toggleConfirmPasswordVisibility()"
+                  [attr.aria-label]="'Toggle confirm password visibility'">
+            <mat-icon>{{hideConfirmPassword ? 'visibility_off' : 'visibility'}}</mat-icon>
+          </button>
+          <mat-error *ngIf="confirmPasswordInput.invalid && confirmPasswordInput.touched">
+            <span *ngIf="confirmPasswordInput.errors?.['required']">Confirma tu contraseña</span>
+          </mat-error>
+          <mat-error *ngIf="password !== confirmPassword && confirmPasswordInput.touched">
+            Las contraseñas no coinciden
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Indicador de Fortaleza de Contraseña -->
+        <div class="password-strength" *ngIf="password">
+          <div class="strength-bar">
+            <div class="strength-fill" 
+                 [class.weak]="getPasswordStrength() === 'weak'"
+                 [class.medium]="getPasswordStrength() === 'medium'"
+                 [class.strong]="getPasswordStrength() === 'strong'"
+                 [style.width.%]="getPasswordStrengthPercentage()">
+            </div>
+          </div>
+          <span class="strength-text">
+            Fortaleza: {{getPasswordStrengthText()}}
+          </span>
+        </div>
+
+        <!-- Términos y Condiciones -->
+        <div class="terms-section">
+          <mat-checkbox [(ngModel)]="acceptTerms" 
+                        name="acceptTerms" 
+                        color="primary"
+                        required>
+            Acepto los 
+            <a href="#" class="terms-link">términos y condiciones</a> 
+            y la 
+            <a href="#" class="terms-link">política de privacidad</a>
+          </mat-checkbox>
+        </div>
+
+        <!-- Botón Registro -->
+        <button mat-raised-button 
+                color="primary" 
+                type="submit"
+                class="signup-button"
+                [disabled]="signupForm.invalid || isLoading || password !== confirmPassword || !acceptTerms">
+          <mat-spinner diameter="20" *ngIf="isLoading" class="signup-spinner"></mat-spinner>
+          <mat-icon *ngIf="!isLoading">person_add</mat-icon>
+          <span>{{isLoading ? 'Creando cuenta...' : 'Crear Cuenta'}}</span>
+        </button>
+
+        <!-- Mensajes -->
+        <div *ngIf="errorMessage" class="error-message">
+          <mat-icon>error</mat-icon>
+          <span>{{errorMessage}}</span>
+        </div>
+
+        <div *ngIf="successMessage" class="success-message">
+          <mat-icon>check_circle</mat-icon>
+          <span>{{successMessage}}</span>
+        </div>
+      </form>
+
+      <!-- Divider -->
+      <div class="divider">
+        <span>o</span>
+      </div>
+
+      <!-- Login -->
+      <div class="login-section">
+        <p>¿Ya tienes cuenta?</p>
+        <button mat-stroked-button 
+                color="primary" 
+                class="login-button"
+                (click)="goToLogin()">
+          <mat-icon>login</mat-icon>
+          <span>Iniciar Sesión</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

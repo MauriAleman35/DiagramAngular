@@ -1,0 +1,45 @@
+.list {
+  display: grid;
+  gap: .75rem;
+  padding: 1rem 0;
+}
+
+.item {
+  background: #fff;
+  border-radius: 8px;
+  padding: .75rem 1rem;
+  display: grid;
+  grid-template-columns: 24px 1fr auto auto;
+  align-items: center;
+  gap: .75rem;
+  border: 1px solid rgba(0, 0, 0, .08);
+}
+.title-centered {
+  padding: auto;
+  text-align: center;
+  font-size: 1.8rem;
+  font-weight: bold;
+}
+
+.title-separator {
+  margin: 0 auto 1rem auto;
+  width: 0%;
+  height: 1px;
+  background-color: #ddd;
+}
+.from {
+  font-weight: 500;
+}
+
+.status {
+  text-transform: capitalize;
+  font-weight: 600;
+}
+
+.status-pending {
+  color: #e91e63;
+}
+
+.status-accepted {
+  color: #4caf50;
+}

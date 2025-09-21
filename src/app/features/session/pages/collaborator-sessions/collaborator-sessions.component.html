@@ -1,0 +1,67 @@
+<div class="sessions-container">
+  <!-- Header con descripción -->
+  <div class="header-section">
+    <h1 class="page-title">Sesiones como colaborador</h1>
+    <p class="page-description">Estas son las sesiones en las que participás como colaborador.</p>
+  </div>
+
+  <!-- Buscador -->
+  <div class="search-section">
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Buscar sesiones</mat-label>
+      <input
+        matInput
+        placeholder="Busca por nombre o descripción..."
+        [(ngModel)]="searchTerm"
+        (input)="onSearch()" />
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+  </div>
+
+  <!-- Lista de sesiones -->
+  <div class="sessions-grid" *ngIf="filteredSessions.length > 0; else noSessions">
+    <mat-card class="session-card" *ngFor="let session of filteredSessions">
+      <mat-card-header>
+        <div mat-card-avatar class="session-avatar">
+          <mat-icon>group</mat-icon>
+        </div>
+        <mat-card-title>{{ session.name }}</mat-card-title>
+        <mat-card-subtitle>Creada el {{ session.createdAt | date: 'short' }}</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <p class="session-description">{{ session.description }}</p>
+        <div class="session-info">
+          <div class="info-item">
+            <mat-icon>people</mat-icon>
+            <span>{{ session.userSessions.length }} colaboradores</span>
+          </div>
+          <div class="info-item">
+            <mat-icon>schema</mat-icon>
+            <span>{{ session.diagrams.length }} diagramas</span>
+          </div>
+        </div>
+      </mat-card-content>
+
+      <mat-card-actions>
+        <button mat-raised-button color="primary" (click)="joinSession(session.id)">
+          <mat-icon>arrow_circle_right</mat-icon>
+          Unirse
+        </button>
+        <button mat-button (click)="viewDetails(session.id)">
+          <mat-icon>visibility</mat-icon>
+          Detalles
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+
+  <!-- Estado vacío -->
+  <ng-template #noSessions>
+    <div class="empty-state">
+      <mat-icon class="empty-icon">group_off</mat-icon>
+      <h3>No participás en ninguna sesión</h3>
+      <p>Cuando te inviten como colaborador, las sesiones aparecerán aquí.</p>
+    </div>
+  </ng-template>
+</div>

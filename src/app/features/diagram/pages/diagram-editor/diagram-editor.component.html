@@ -1,0 +1,372 @@
+<!-- diagram-editor.component.html -->
+<div class="main-container">
+  <!-- Panel de control a la izquierda -->
+  <div class="sidebar">
+    <h3 class="sidebar-title">Controles</h3>
+
+    <!-- Controles básicos -->
+    <button (click)="addEntity()" class="btn-sidebar btn-primary">
+      <mat-icon>add_box</mat-icon>
+      <span>Añadir Entidad</span>
+    </button>
+
+    <button
+      (click)="deleteSelected()"
+      class="btn-sidebar btn-danger"
+      [disabled]="!selectedEntity && !selectedLink">
+      <mat-icon>delete</mat-icon>
+      <span>Eliminar Selección</span>
+    </button>
+
+    <button (click)="updateDiagram()" class="btn-sidebar btn-success">
+      <mat-icon>save</mat-icon>
+      <span>Guardar Diagrama</span>
+    </button>
+
+    <!-- Controles de entidad seleccionada -->
+    <div *ngIf="selectedEntity" class="entity-controls">
+      <h4 class="control-section-title">Entidad: {{ selectedEntity.data.name }}</h4>
+
+      <button (click)="openEditDialog()" class="btn-sidebar btn-edit">
+        <mat-icon>edit</mat-icon>
+        <span>Editar Entidad</span>
+      </button>
+    </div>
+
+    <!-- Controles generales -->
+    <div class="general-controls">
+      <button
+        (click)="toggleResizeMode()"
+        [class]="['btn-sidebar', 'btn-mode', { 'btn-active': resizeMode }]">
+        <mat-icon>crop_free</mat-icon>
+        <span>{{ resizeMode ? 'Desactivar Redimensionar' : 'Modo Redimensionar' }}</span>
+      </button>
+
+      <!-- <button
+        (click)="exportDiagramAsBackend()"
+        class="btn-sidebar btn-export"
+        [disabled]="isExporting"
+        [class.btn-loading]="isExporting">
+        <mat-icon>cloud_download</mat-icon>
+        <span>{{ isExporting ? 'Generando Backend...' : 'Exportar Backend' }}</span>
+      </button> -->
+
+      <button (click)="goBack()" class="btn-sidebar btn-back">
+        <mat-icon>arrow_back</mat-icon>
+        <span>Volver Atrás</span>
+      </button>
+
+      <button
+        (click)="deactivateRelationMode()"
+        class="btn-sidebar btn-secondary"
+        [disabled]="!isCreatingRelation">
+        <mat-icon>close</mat-icon>
+        <span>Desactivar Relación</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Área del diagrama en el centro -->
+  <div class="diagram-container">
+    <!-- Indicadores de estado -->
+    <div class="status-indicators">
+      <div *ngIf="relationMode" class="relation-indicator">
+        <mat-icon>link</mat-icon>
+        <span>Modo activo: <strong>{{ relationMode }}</strong> - Arrastra desde un puerto a otro</span>
+      </div>
+
+      <div *ngIf="resizeMode" class="resize-indicator">
+        <mat-icon>crop_free</mat-icon>
+        <span>Modo redimensionar activo - Haz clic y arrastra en una entidad</span>
+      </div>
+
+      <div *ngIf="selectedEntity" class="selection-indicator">
+        <mat-icon>check_circle</mat-icon>
+        <span>Entidad seleccionada: <strong>{{ selectedEntity.data.name }}</strong></span>
+      </div>
+    </div>
+
+    <!-- Área del diagrama -->
+    <div #diagramDiv class="diagram"></div>
+  </div>
+
+  <!-- Panel de relaciones a la derecha -->
+  <div class="relations-panel">
+    <h3 class="panel-title">Relaciones</h3>
+
+    <div class="relations-grid">
+      <button
+        (click)="selectRelationship('OneToOne')"
+        [class]="['btn-relation', { active: relationMode === 'OneToOne' }]">
+        <mat-icon>trending_flat</mat-icon>
+        <span class="relation-text">1 a 1</span>
+      </button>
+
+      <button
+        (click)="selectRelationship('OneToMany')"
+        [class]="['btn-relation', { active: relationMode === 'OneToMany' }]">
+        <mat-icon>call_split</mat-icon>
+        <span class="relation-text">1 a Muchos</span>
+      </button>
+
+      <button
+        (click)="selectRelationship('ManyToMany')"
+        [class]="['btn-relation', { active: relationMode === 'ManyToMany' }]">
+        <mat-icon>hub</mat-icon>
+        <span class="relation-text">Muchos a Muchos</span>
+      </button>
+
+      <button
+        (click)="selectRelationship('Generalizacion')"
+        [class]="['btn-relation', { active: relationMode === 'Generalizacion' }]">
+        <mat-icon>account_tree</mat-icon>
+        <span class="relation-text">Generalización</span>
+      </button>
+
+      <button
+        (click)="selectRelationship('Agregacion')"
+        [class]="['btn-relation', { active: relationMode === 'Agregacion' }]">
+        <mat-icon>radio_button_unchecked</mat-icon>
+        <span class="relation-text">Agregación</span>
+      </button>
+
+      <button
+        (click)="selectRelationship('Composicion')"
+        [class]="['btn-relation', { active: relationMode === 'Composicion' }]">
+        <mat-icon>lens</mat-icon>
+        <span class="relation-text">Composición</span>
+      </button>
+
+      <button
+        (click)="selectRelationship('Recursividad')"
+        [class]="['btn-relation', { active: relationMode === 'Recursividad' }]">
+        <mat-icon>refresh</mat-icon>
+        <span class="relation-text">Recursividad</span>
+      </button>
+    </div>
+
+    <!-- Estado de relaciones -->
+    <div *ngIf="isCreatingRelation" class="relation-status">
+      <div class="status-active">
+        <mat-icon>radio_button_checked</mat-icon>
+        <span>Modo <strong>{{ selectedRelationship }}</strong> activo</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para editar entidad -->
+  <div *ngIf="showModal" class="modal-overlay" (click)="closeModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <mat-icon>edit</mat-icon>
+          <span>Editar Entidad</span>
+        </h3>
+        <button (click)="closeModal()" class="btn-close">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Nombre de la entidad -->
+        <div class="form-section">
+          <label class="form-label">Nombre de la Entidad</label>
+          <mat-form-field appearance="outline" class="full-width">
+            <input matInput 
+                   [(ngModel)]="entityName"
+                   placeholder="Ingrese el nombre"
+                   (keyup.enter)="saveEntity()">
+          </mat-form-field>
+        </div>
+
+        <!-- Sección de Atributos -->
+        <div class="form-section">
+          <h4 class="section-title">
+            <mat-icon>view_list</mat-icon>
+            <span>Atributos</span>
+          </h4>
+
+          <div class="attribute-form">
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Nombre del Atributo</mat-label>
+                <input matInput [(ngModel)]="newAttribute.name" placeholder="Nombre">
+              </mat-form-field>
+              
+              <mat-form-field appearance="outline">
+                <mat-label>Tipo</mat-label>
+                <mat-select [(ngModel)]="newAttribute.type">
+                  <mat-option value="int">int</mat-option>
+                  <mat-option value="varchar">varchar</mat-option>
+                  <mat-option value="datetime">datetime</mat-option>
+                  <mat-option value="boolean">boolean</mat-option>
+                  <mat-option value="char">char</mat-option>
+                  <mat-option value="decimal">decimal</mat-option>
+                  <mat-option value="text">text</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+
+            <div class="checkbox-row">
+              <mat-checkbox [(ngModel)]="newAttribute.primaryKey" color="primary">
+                Primary Key [PK]
+              </mat-checkbox>
+              
+              <mat-checkbox [(ngModel)]="newAttribute.foreignKey" color="accent">
+                Foreign Key [FK]
+              </mat-checkbox>
+            </div>
+
+            <button
+              mat-raised-button
+              color="primary"
+              (click)="addAttribute()"
+              [disabled]="!newAttribute.name || !newAttribute.type"
+              class="btn-add">
+              <mat-icon>add</mat-icon>
+              <span>Agregar Atributo</span>
+            </button>
+          </div>
+
+          <!-- Lista de atributos existentes -->
+          <div *ngIf="attributes.length > 0" class="items-list">
+            <h5 class="list-title">
+              <mat-icon>list</mat-icon>
+              <span>Atributos existentes ({{ attributes.length }})</span>
+            </h5>
+            <div class="items-container">
+              <mat-card 
+                *ngFor="let attr of attributes; let i = index"
+                class="item-card attribute-card">
+                <mat-card-content class="item-content">
+                  <div class="item-info">
+                    <span class="item-name">{{ attr.name }}</span>
+                    <span class="item-type">{{ attr.type }}</span>
+                    <div class="item-badges">
+                      <mat-chip *ngIf="attr.primaryKey" color="primary">PK</mat-chip>
+                      <mat-chip *ngIf="attr.foreignKey" color="accent">FK</mat-chip>
+                    </div>
+                  </div>
+                  <button
+                    mat-icon-button
+                    color="warn"
+                    (click)="removeAttribute(i)"
+                    class="btn-remove">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </mat-card-content>
+              </mat-card>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sección de Métodos -->
+        <div class="form-section">
+          <h4 class="section-title">
+            <mat-icon>functions</mat-icon>
+            <span>Métodos</span>
+          </h4>
+
+          <div class="method-form">
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Nombre del Método</mat-label>
+                <input matInput [(ngModel)]="newMethod.name" placeholder="Nombre">
+              </mat-form-field>
+              
+              <mat-form-field appearance="outline">
+                <mat-label>Tipo de Retorno</mat-label>
+                <mat-select [(ngModel)]="newMethod.type">
+                  <mat-option value="void">void</mat-option>
+                  <mat-option value="boolean">boolean</mat-option>
+                  <mat-option value="int">int</mat-option>
+                  <mat-option value="String">String</mat-option>
+                  <mat-option value="double">double</mat-option>
+                  <mat-option value="Object">Object</mat-option>
+                </mat-select>
+              </mat-form-field>
+              
+              <mat-form-field appearance="outline">
+                <mat-label>Visibilidad</mat-label>
+                <mat-select [(ngModel)]="newMethod.visibility">
+                  <mat-option value="public">public</mat-option>
+                  <mat-option value="private">private</mat-option>
+                  <mat-option value="protected">protected</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+
+            <button
+              mat-raised-button
+              color="primary"
+              (click)="addMethod()"
+              [disabled]="!newMethod.name"
+              class="btn-add">
+              <mat-icon>add</mat-icon>
+              <span>Agregar Método</span>
+            </button>
+          </div>
+
+          <!-- Lista de métodos existentes -->
+          <div *ngIf="methods.length > 0" class="items-list">
+            <h5 class="list-title">
+              <mat-icon>list</mat-icon>
+              <span>Métodos existentes ({{ methods.length }})</span>
+            </h5>
+            <div class="items-container">
+              <mat-card 
+                *ngFor="let method of methods; let i = index"
+                class="item-card method-card">
+                <mat-card-content class="item-content">
+                  <div class="item-info">
+                    <mat-chip [color]="method.visibility === 'public' ? 'primary' : method.visibility === 'private' ? 'warn' : 'accent'">
+                      {{ method.visibility }}
+                    </mat-chip>
+                    <span class="item-name">{{ method.name }}()</span>
+                    <span class="item-type">{{ method.type }}</span>
+                  </div>
+                  <button
+                    mat-icon-button
+                    color="warn"
+                    (click)="removeMethod(i)"
+                    class="btn-remove">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </mat-card-content>
+              </mat-card>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Acciones del modal -->
+      <div class="modal-footer">
+        <button mat-raised-button color="primary" (click)="saveEntity()" class="btn-modal">
+          <mat-icon>save</mat-icon>
+          <span>Guardar Cambios</span>
+        </button>
+        <button mat-button (click)="closeModal()" class="btn-modal">
+          <mat-icon>cancel</mat-icon>
+          <span>Cancelar</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de carga para exportación -->
+  <div *ngIf="isExporting" class="modal-overlay loading-overlay">
+    <div class="loading-modal">
+      <div class="loading-content">
+        <mat-spinner diameter="60"></mat-spinner>
+        <h3 class="loading-title">Generando Backend</h3>
+        <p class="loading-description">
+          JHipster está generando tu backend... Esto puede tardar 1-2 minutos.
+        </p>
+        <div class="loading-progress">
+          <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+          <p class="progress-text">Por favor no cierres ni actualices la página</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

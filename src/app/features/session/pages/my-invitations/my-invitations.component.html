@@ -1,0 +1,33 @@
+<mat-card>
+    <mat-card-title class="title-centered">Mis invitaciones</mat-card-title>
+
+  <!-- Separación visual -->
+  <div class="title-separator"></div>
+  <mat-tab-group>
+    <!-- Tab: Pendientes -->
+    <mat-tab label="Pendientes">
+      <div class="list">
+        <div class="item" *ngFor="let inv of pendingInvitations">
+          <mat-icon color="primary">mail</mat-icon>
+          <span class="from">{{ inv.session.name }}</span>
+          <span class="status status-pending">{{ inv.status }}</span>
+          <button mat-button color="primary" (click)="acceptInvitation(inv.user.id,inv.session.id)">
+            <mat-icon>check</mat-icon>
+            Aceptar
+          </button>
+        </div>
+      </div>
+    </mat-tab>
+
+    <!-- Tab: Aceptadas -->
+    <mat-tab label="Aceptadas">
+      <div class="list">
+        <div class="item" *ngFor="let inv of acceptedInvitations">
+          <mat-icon color="accent">check_circle</mat-icon>
+          <span class="from">{{ inv.session.name }}</span>
+          <span class="status status-accepted">Aceptado</span>
+        </div>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</mat-card>
