@@ -1,73 +1,150 @@
 <!-- diagram-editor.component.html -->
 <div class="main-container">
-  <!-- Panel de control a la izquierda -->
-  <div class="sidebar">
-    <h3 class="sidebar-title">Controles</h3>
+  <!-- Botón hamburguesa -->
+  <button class="hamburger-btn" (click)="toggleSidebar()" [class.active]="sidebarOpen">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
 
-    <!-- Controles básicos -->
-    <button (click)="addEntity()" class="btn-sidebar btn-primary">
-      <mat-icon>add_box</mat-icon>
-      <span>Añadir Entidad</span>
-    </button>
+  <!-- Overlay para cerrar menú solo en móviles -->
+  <div *ngIf="sidebarOpen" class="sidebar-overlay" (click)="toggleSidebar()"></div>
 
-    <button
-      (click)="deleteSelected()"
-      class="btn-sidebar btn-danger"
-      [disabled]="!selectedEntity && !selectedLink">
-      <mat-icon>delete</mat-icon>
-      <span>Eliminar Selección</span>
-    </button>
+  <!-- Panel lateral colapsible -->
+  <div class="sidebar" [class.open]="sidebarOpen">
+    <!-- Sección de Controles -->
+    <div class="sidebar-section">
+      <h3 class="section-title">
+        <mat-icon>settings</mat-icon>
+        <span>Controles</span>
+      </h3>
 
-    <button (click)="updateDiagram()" class="btn-sidebar btn-success">
-      <mat-icon>save</mat-icon>
-      <span>Guardar Diagrama</span>
-    </button>
-
-    <!-- Controles de entidad seleccionada -->
-    <div *ngIf="selectedEntity" class="entity-controls">
-      <h4 class="control-section-title">Entidad: {{ selectedEntity.data.name }}</h4>
-
-      <button (click)="openEditDialog()" class="btn-sidebar btn-edit">
-        <mat-icon>edit</mat-icon>
-        <span>Editar Entidad</span>
+      <!-- Controles básicos -->
+      <button (click)="addEntity()" class="btn-sidebar btn-primary">
+        <mat-icon>add_box</mat-icon>
+        <span>Añadir Entidad</span>
       </button>
+
+      <button
+        (click)="deleteSelected()"
+        class="btn-sidebar btn-danger"
+        [disabled]="!selectedEntity && !selectedLink">
+        <mat-icon>delete</mat-icon>
+        <span>Eliminar Selección</span>
+      </button>
+
+      <button (click)="updateDiagram()" class="btn-sidebar btn-success">
+        <mat-icon>save</mat-icon>
+        <span>Guardar Diagrama</span>
+      </button>
+
+      <!-- Controles de entidad seleccionada -->
+      <div *ngIf="selectedEntity" class="entity-controls">
+        <h4 class="control-section-title">Entidad: {{ selectedEntity.data.name }}</h4>
+
+        <button (click)="openEditDialog()" class="btn-sidebar btn-edit">
+          <mat-icon>edit</mat-icon>
+          <span>Editar Entidad</span>
+        </button>
+      </div>
+
+      <!-- Controles generales -->
+      <div class="general-controls">
+        <button (click)="goBack()" class="btn-sidebar btn-back">
+          <mat-icon>arrow_back</mat-icon>
+          <span>Volver Atrás</span>
+        </button>
+
+        <button
+          (click)="deactivateRelationMode()"
+          class="btn-sidebar btn-secondary"
+          [disabled]="!isCreatingRelation">
+          <mat-icon>close</mat-icon>
+          <span>Desactivar Relación</span>
+        </button>
+
+        <button
+          (click)="exportBackend()"
+          class="btn-sidebar btn-secondary">
+          <mat-icon>call_made</mat-icon>
+          <span>Export Backend</span>
+        </button>
+      </div>
     </div>
 
-    <!-- Controles generales -->
-    <div class="general-controls">
-      <button
-        (click)="toggleResizeMode()"
-        [class]="['btn-sidebar', 'btn-mode', { 'btn-active': resizeMode }]">
-        <mat-icon>crop_free</mat-icon>
-        <span>{{ resizeMode ? 'Desactivar Redimensionar' : 'Modo Redimensionar' }}</span>
-      </button>
+    <!-- Separador -->
+    <div class="sidebar-separator"></div>
 
-      <!-- <button
-        (click)="exportDiagramAsBackend()"
-        class="btn-sidebar btn-export"
-        [disabled]="isExporting"
-        [class.btn-loading]="isExporting">
-        <mat-icon>cloud_download</mat-icon>
-        <span>{{ isExporting ? 'Generando Backend...' : 'Exportar Backend' }}</span>
-      </button> -->
+    <!-- Sección de Relaciones -->
+    <div class="sidebar-section">
+      <h3 class="section-title">
+        <mat-icon>link</mat-icon>
+        <span>Relaciones</span>
+      </h3>
 
-      <button (click)="goBack()" class="btn-sidebar btn-back">
-        <mat-icon>arrow_back</mat-icon>
-        <span>Volver Atrás</span>
-      </button>
+      <div class="relations-grid">
+        <button
+          (click)="selectRelationship('OneToOne')"
+          [class]="['btn-relation', { active: relationMode === 'OneToOne' }]">
+          <mat-icon>trending_flat</mat-icon>
+          <span class="relation-text">1 a 1</span>
+        </button>
 
-      <button
-        (click)="deactivateRelationMode()"
-        class="btn-sidebar btn-secondary"
-        [disabled]="!isCreatingRelation">
-        <mat-icon>close</mat-icon>
-        <span>Desactivar Relación</span>
-      </button>
+        <button
+          (click)="selectRelationship('OneToMany')"
+          [class]="['btn-relation', { active: relationMode === 'OneToMany' }]">
+          <mat-icon>call_split</mat-icon>
+          <span class="relation-text">1 a Muchos</span>
+        </button>
+
+        <button
+          (click)="selectRelationship('ManyToMany')"
+          [class]="['btn-relation', { active: relationMode === 'ManyToMany' }]">
+          <mat-icon>hub</mat-icon>
+          <span class="relation-text">Muchos a Muchos</span>
+        </button>
+
+        <button
+          (click)="selectRelationship('Generalizacion')"
+          [class]="['btn-relation', { active: relationMode === 'Generalizacion' }]">
+          <mat-icon>account_tree</mat-icon>
+          <span class="relation-text">Generalización</span>
+        </button>
+
+        <button
+          (click)="selectRelationship('Agregacion')"
+          [class]="['btn-relation', { active: relationMode === 'Agregacion' }]">
+          <mat-icon>radio_button_unchecked</mat-icon>
+          <span class="relation-text">Agregación</span>
+        </button>
+
+        <button
+          (click)="selectRelationship('Composicion')"
+          [class]="['btn-relation', { active: relationMode === 'Composicion' }]">
+          <mat-icon>lens</mat-icon>
+          <span class="relation-text">Composición</span>
+        </button>
+
+        <button
+          (click)="selectRelationship('Recursividad')"
+          [class]="['btn-relation', { active: relationMode === 'Recursividad' }]">
+          <mat-icon>refresh</mat-icon>
+          <span class="relation-text">Recursividad</span>
+        </button>
+      </div>
+
+      <!-- Estado de relaciones -->
+      <div *ngIf="isCreatingRelation" class="relation-status">
+        <div class="status-active">
+          <mat-icon>radio_button_checked</mat-icon>
+          <span>Modo <strong>{{ selectedRelationship }}</strong> activo</span>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Área del diagrama en el centro -->
-  <div class="diagram-container">
+  <!-- Área del diagrama -->
+  <div class="diagram-container" [class.sidebar-open]="sidebarOpen">
     <!-- Indicadores de estado -->
     <div class="status-indicators">
       <div *ngIf="relationMode" class="relation-indicator">
@@ -90,70 +167,6 @@
     <div #diagramDiv class="diagram"></div>
   </div>
 
-  <!-- Panel de relaciones a la derecha -->
-  <div class="relations-panel">
-    <h3 class="panel-title">Relaciones</h3>
-
-    <div class="relations-grid">
-      <button
-        (click)="selectRelationship('OneToOne')"
-        [class]="['btn-relation', { active: relationMode === 'OneToOne' }]">
-        <mat-icon>trending_flat</mat-icon>
-        <span class="relation-text">1 a 1</span>
-      </button>
-
-      <button
-        (click)="selectRelationship('OneToMany')"
-        [class]="['btn-relation', { active: relationMode === 'OneToMany' }]">
-        <mat-icon>call_split</mat-icon>
-        <span class="relation-text">1 a Muchos</span>
-      </button>
-
-      <button
-        (click)="selectRelationship('ManyToMany')"
-        [class]="['btn-relation', { active: relationMode === 'ManyToMany' }]">
-        <mat-icon>hub</mat-icon>
-        <span class="relation-text">Muchos a Muchos</span>
-      </button>
-
-      <button
-        (click)="selectRelationship('Generalizacion')"
-        [class]="['btn-relation', { active: relationMode === 'Generalizacion' }]">
-        <mat-icon>account_tree</mat-icon>
-        <span class="relation-text">Generalización</span>
-      </button>
-
-      <button
-        (click)="selectRelationship('Agregacion')"
-        [class]="['btn-relation', { active: relationMode === 'Agregacion' }]">
-        <mat-icon>radio_button_unchecked</mat-icon>
-        <span class="relation-text">Agregación</span>
-      </button>
-
-      <button
-        (click)="selectRelationship('Composicion')"
-        [class]="['btn-relation', { active: relationMode === 'Composicion' }]">
-        <mat-icon>lens</mat-icon>
-        <span class="relation-text">Composición</span>
-      </button>
-
-      <button
-        (click)="selectRelationship('Recursividad')"
-        [class]="['btn-relation', { active: relationMode === 'Recursividad' }]">
-        <mat-icon>refresh</mat-icon>
-        <span class="relation-text">Recursividad</span>
-      </button>
-    </div>
-
-    <!-- Estado de relaciones -->
-    <div *ngIf="isCreatingRelation" class="relation-status">
-      <div class="status-active">
-        <mat-icon>radio_button_checked</mat-icon>
-        <span>Modo <strong>{{ selectedRelationship }}</strong> activo</span>
-      </div>
-    </div>
-  </div>
-
   <!-- Modal para editar entidad -->
   <div *ngIf="showModal" class="modal-overlay" (click)="closeModal()">
     <div class="modal-content" (click)="$event.stopPropagation()">
@@ -167,15 +180,16 @@
         </button>
       </div>
 
-      <div class="modal-body">
+      <!-- FORMULARIO REACTIVO PRINCIPAL -->
+      <form class="modal-body" [formGroup]="entityForm">
         <!-- Nombre de la entidad -->
         <div class="form-section">
           <label class="form-label">Nombre de la Entidad</label>
           <mat-form-field appearance="outline" class="full-width">
-            <input matInput 
-                   [(ngModel)]="entityName"
-                   placeholder="Ingrese el nombre"
-                   (keyup.enter)="saveEntity()">
+            <input matInput formControlName="name" placeholder="Ingrese el nombre" />
+            <mat-error *ngIf="entityForm.get('name')?.hasError('required')">
+              El nombre es obligatorio.
+            </mat-error>
           </mat-form-field>
         </div>
 
@@ -186,33 +200,34 @@
             <span>Atributos</span>
           </h4>
 
-          <div class="attribute-form">
+          <!-- NUEVO atributo -->
+          <div [formGroup]="newAttributeForm" class="attribute-form">
             <div class="form-row">
               <mat-form-field appearance="outline">
                 <mat-label>Nombre del Atributo</mat-label>
-                <input matInput [(ngModel)]="newAttribute.name" placeholder="Nombre">
+                <input matInput formControlName="name" placeholder="Nombre" />
+                <mat-error *ngIf="newAttributeForm.get('name')?.hasError('required')">
+                  Requerido
+                </mat-error>
               </mat-form-field>
-              
+
               <mat-form-field appearance="outline">
                 <mat-label>Tipo</mat-label>
-                <mat-select [(ngModel)]="newAttribute.type">
-                  <mat-option value="int">int</mat-option>
-                  <mat-option value="varchar">varchar</mat-option>
-                  <mat-option value="datetime">datetime</mat-option>
-                  <mat-option value="boolean">boolean</mat-option>
-                  <mat-option value="char">char</mat-option>
-                  <mat-option value="decimal">decimal</mat-option>
-                  <mat-option value="text">text</mat-option>
+                <mat-select formControlName="type">
+                  <mat-option *ngFor="let t of attributeTypes" [value]="t">{{ t }}</mat-option>
                 </mat-select>
+                <mat-error *ngIf="newAttributeForm.get('type')?.hasError('required')">
+                  Selecciona un tipo
+                </mat-error>
               </mat-form-field>
             </div>
 
             <div class="checkbox-row">
-              <mat-checkbox [(ngModel)]="newAttribute.primaryKey" color="primary">
+              <mat-checkbox formControlName="primaryKey" color="primary">
                 Primary Key [PK]
               </mat-checkbox>
-              
-              <mat-checkbox [(ngModel)]="newAttribute.foreignKey" color="accent">
+
+              <mat-checkbox formControlName="foreignKey" color="accent">
                 Foreign Key [FK]
               </mat-checkbox>
             </div>
@@ -220,8 +235,9 @@
             <button
               mat-raised-button
               color="primary"
-              (click)="addAttribute()"
-              [disabled]="!newAttribute.name || !newAttribute.type"
+              type="button"
+              (click)="addAttributeFromForm()"
+              [disabled]="newAttributeForm.invalid"
               class="btn-add">
               <mat-icon>add</mat-icon>
               <span>Agregar Atributo</span>
@@ -229,22 +245,23 @@
           </div>
 
           <!-- Lista de atributos existentes -->
-          <div *ngIf="attributes.length > 0" class="items-list">
+          <div *ngIf="attributesFA.controls.length > 0" class="items-list">
             <h5 class="list-title">
               <mat-icon>list</mat-icon>
-              <span>Atributos existentes ({{ attributes.length }})</span>
+              <span>Atributos existentes ({{ attributesFA.controls.length }})</span>
             </h5>
+
             <div class="items-container">
-              <mat-card 
-                *ngFor="let attr of attributes; let i = index"
+              <mat-card
+                *ngFor="let attr of attributesFA.controls; let i = index"
                 class="item-card attribute-card">
                 <mat-card-content class="item-content">
                   <div class="item-info">
-                    <span class="item-name">{{ attr.name }}</span>
-                    <span class="item-type">{{ attr.type }}</span>
+                    <span class="item-name">{{ attr.get('name')?.value }}</span>
+                    <span class="item-type">{{ attr.get('type')?.value }}</span>
                     <div class="item-badges">
-                      <mat-chip *ngIf="attr.primaryKey" color="primary">PK</mat-chip>
-                      <mat-chip *ngIf="attr.foreignKey" color="accent">FK</mat-chip>
+                      <mat-chip *ngIf="attr.get('primaryKey')?.value" color="primary">PK</mat-chip>
+                      <mat-chip *ngIf="attr.get('foreignKey')?.value" color="accent">FK</mat-chip>
                     </div>
                   </div>
                   <button
@@ -267,31 +284,28 @@
             <span>Métodos</span>
           </h4>
 
-          <div class="method-form">
+          <!-- NUEVO método -->
+          <div [formGroup]="newMethodForm" class="method-form">
             <div class="form-row">
               <mat-form-field appearance="outline">
                 <mat-label>Nombre del Método</mat-label>
-                <input matInput [(ngModel)]="newMethod.name" placeholder="Nombre">
+                <input matInput formControlName="name" placeholder="Nombre" />
+                <mat-error *ngIf="newMethodForm.get('name')?.hasError('required')">
+                  Requerido
+                </mat-error>
               </mat-form-field>
-              
+
               <mat-form-field appearance="outline">
                 <mat-label>Tipo de Retorno</mat-label>
-                <mat-select [(ngModel)]="newMethod.type">
-                  <mat-option value="void">void</mat-option>
-                  <mat-option value="boolean">boolean</mat-option>
-                  <mat-option value="int">int</mat-option>
-                  <mat-option value="String">String</mat-option>
-                  <mat-option value="double">double</mat-option>
-                  <mat-option value="Object">Object</mat-option>
+                <mat-select formControlName="type">
+                  <mat-option *ngFor="let t of methodReturnTypes" [value]="t">{{ t }}</mat-option>
                 </mat-select>
               </mat-form-field>
-              
+
               <mat-form-field appearance="outline">
                 <mat-label>Visibilidad</mat-label>
-                <mat-select [(ngModel)]="newMethod.visibility">
-                  <mat-option value="public">public</mat-option>
-                  <mat-option value="private">private</mat-option>
-                  <mat-option value="protected">protected</mat-option>
+                <mat-select formControlName="visibility">
+                  <mat-option *ngFor="let v of methodVisibilities" [value]="v">{{ v }}</mat-option>
                 </mat-select>
               </mat-form-field>
             </div>
@@ -299,8 +313,9 @@
             <button
               mat-raised-button
               color="primary"
-              (click)="addMethod()"
-              [disabled]="!newMethod.name"
+              type="button"
+              (click)="addMethodFromForm()"
+              [disabled]="newMethodForm.invalid"
               class="btn-add">
               <mat-icon>add</mat-icon>
               <span>Agregar Método</span>
@@ -308,22 +323,24 @@
           </div>
 
           <!-- Lista de métodos existentes -->
-          <div *ngIf="methods.length > 0" class="items-list">
+          <div *ngIf="methodsFA.controls.length > 0" class="items-list">
             <h5 class="list-title">
               <mat-icon>list</mat-icon>
-              <span>Métodos existentes ({{ methods.length }})</span>
+              <span>Métodos existentes ({{ methodsFA.controls.length }})</span>
             </h5>
             <div class="items-container">
-              <mat-card 
-                *ngFor="let method of methods; let i = index"
+              <mat-card
+                *ngFor="let method of methodsFA.controls; let i = index"
                 class="item-card method-card">
                 <mat-card-content class="item-content">
                   <div class="item-info">
-                    <mat-chip [color]="method.visibility === 'public' ? 'primary' : method.visibility === 'private' ? 'warn' : 'accent'">
-                      {{ method.visibility }}
+                    <mat-chip
+                      [color]="method.get('visibility')?.value === 'public' ? 'primary'
+                               : method.get('visibility')?.value === 'private' ? 'warn' : 'accent'">
+                      {{ method.get('visibility')?.value }}
                     </mat-chip>
-                    <span class="item-name">{{ method.name }}()</span>
-                    <span class="item-type">{{ method.type }}</span>
+                    <span class="item-name">{{ method.get('name')?.value }}()</span>
+                    <span class="item-type">{{ method.get('type')?.value }}</span>
                   </div>
                   <button
                     mat-icon-button
@@ -337,7 +354,7 @@
             </div>
           </div>
         </div>
-      </div>
+      </form>
 
       <!-- Acciones del modal -->
       <div class="modal-footer">
@@ -369,4 +386,57 @@
       </div>
     </div>
   </div>
+
+  <!-- ===================== WIDGET CHAT IA (flotante) ===================== -->
+  <button class="ai-fab" (click)="toggleAi()" [attr.aria-expanded]="aiOpen" aria-label="Abrir asistente IA">
+    <mat-icon *ngIf="!aiOpen">support_agent</mat-icon>
+    <mat-icon *ngIf="aiOpen">close</mat-icon>
+  </button>
+
+  <section class="ai-panel" [class.open]="aiOpen" aria-label="Panel asistente IA">
+    <header class="ai-header">
+      <div class="ai-title">
+        <mat-icon>auto_awesome</mat-icon><span>Asistente IA</span>
+      </div>
+      <button class="ai-close" (click)="toggleAi()" aria-label="Cerrar"><mat-icon>close</mat-icon></button>
+    </header>
+
+    <div class="ai-body">
+      <div class="ai-messages" #aiScroll>
+        <!-- Historial -->
+        <div *ngFor="let m of aiMessages" class="ai-msg" [class.you]="m.role==='user'" [class.ai]="m.role==='ai'">
+          <div class="ai-bubble">
+            <div class="ai-text" [innerText]="m.text"></div>
+            <div class="ai-suggestions" *ngIf="m.suggestions?.length">
+              <div class="suggestion" *ngFor="let s of m.suggestions">{{ s }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Loading -->
+        <div class="ai-loading" *ngIf="aiLoading">
+          <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+          <span>Pensando…</span>
+        </div>
+      </div>
+    </div>
+
+    <form class="ai-input" (ngSubmit)="sendAi()" [class.disabled]="aiLoading">
+      <mat-form-field appearance="outline" class="ai-input-field">
+        <mat-label>Indica qué quieres crear o cambiar…</mat-label>
+       <textarea
+  matInput
+  rows="2"
+  name="aiPrompt"
+  [(ngModel)]="aiPrompt"
+  placeholder='Ej: "Crea entidad Cliente con id:int PK, nombre:text; relaciona 1..* con Pedido"'
+  (keydown)="maybeSend($event)"></textarea>
+      </mat-form-field>
+
+      <button mat-raised-button color="primary" type="submit" [disabled]="aiLoading || !aiPrompt.trim()">
+  <mat-icon>send</mat-icon>
+</button>
+    </form>
+  </section>
+  <!-- =================== FIN WIDGET CHAT IA =================== -->
 </div>

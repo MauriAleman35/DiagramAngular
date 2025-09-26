@@ -9,11 +9,12 @@ import { TokenInterceptor } from './core/token/token.interceptor';
 import { SessionModule } from './features/session/session.module';
 import { FormsModule } from '@angular/forms';
 import { jwtDecode } from 'jwt-decode';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations'; // ✅
 
 
 @NgModule({
   imports: [
-    BrowserModule,
+    BrowserModule,    BrowserAnimationsModule,
     AppRoutingModule,
     MaterialModule,   
     AuthModule,HttpClientModule,SessionModule,FormsModule

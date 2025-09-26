@@ -1,12 +1,57 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  OnDestroy,
+  ViewChild,
+  ElementRef,
+  AfterViewInit,
+} from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import * as go from 'gojs/release/go-module.js'; // ESM: evita que contamine window.go
+
+// GoJS (ESM)
+import * as go from 'gojs/release/go-module.js';
+
+// STOMP
 import { Client, IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
+
+// Servicio propio
 import { DiagramService } from '../../../../core/diagram/diagram.service';
 import { DiagramPostParams } from '../../../../core/interfaces/diagram';
-import { debounceTime, Subject } from 'rxjs';
 
+// RxJS
+import { Subject, debounceTime } from 'rxjs';
+
+// Reactive Forms
+import {
+  AbstractControl,
+  FormArray,
+  FormBuilder,
+  FormControl,
+  FormGroup,
+  Validators,
+} from '@angular/forms';
+
+/* =======================
+ *   Tipos / Interfaces
+ * ======================= */
+interface AiMessage {
+  role: 'user' | 'ai';
+  text: string;
+  suggestions?: string[];
+}
+
+interface Attribute {
+  name: string;
+  type: string;
+  primaryKey: boolean;
+  foreignKey: boolean;
+}
+interface Method {
+  name: string;
+  type: string;
+  visibility: 'public' | 'private' | 'protected';
+}
 interface DiagramNode {
   key: number;
   name: string;
@@ -16,96 +61,126 @@ interface DiagramNode {
   size?: string;
   userSized?: boolean;
 }
-
-interface Attribute {
-  name: string;
-  type: string;
-  primaryKey: boolean;
-  foreignKey: boolean;
-}
-
-interface Method {
-  name: string;
-  type: string;
-  visibility: 'public' | 'private' | 'protected';
-}
-
 interface DiagramLink {
   key?: number;
   from: number;
   to: number;
   relationship: string;
-  fromMult?: string;
-  toMult?: string;
+  fromMult?: string; // canonical: '1' | '*'
+  toMult?: string;   // en la UI mostramos '1' | '1..*'
   styleScale?: number;
 }
 
+/* ======================================================
+ *               COMPONENTE COMPLETO
+ * ====================================================== */
 @Component({
   selector: 'app-diagram-editor',
   standalone: false,
   templateUrl: './diagram-editor.component.html',
-  styleUrls: ['./diagram-editor.component.css']
+  styleUrls: ['./diagram-editor.component.css'],
 })
 export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy {
-  @ViewChild('diagramDiv', { static: true }) diagramRef!: ElementRef;
+  @ViewChild('diagramDiv', { static: true }) diagramRef!: ElementRef<HTMLDivElement>;
+  @ViewChild('aiScroll', { static: false }) aiScroll?: ElementRef<HTMLDivElement>;
 
-  // Configuración
-  private baseURL = 'http://localhost:3000/api'; // ajusta según tu backend
+  /* ===== Chat IA ===== */
+  aiOpen = false;
+  aiPrompt = '';
+  aiLoading = false;
+  aiMessages: AiMessage[] = [];
+
+  /* ===== Config ===== */
+  private baseURL = 'http://localhost:3000/api';
   private sessionId!: number;
   private userId!: number;
   private token = '';
   private clientId = this.generateClientId();
+  private isExport = false;
 
-  // GoJS
+  /* ===== GoJS ===== */
   private diagram!: go.Diagram;
   private idCounter = 1;
   private linkCounter = 1;
+  private $ = go.GraphObject.make;
 
-  // Estado del componente
+  /* ===== Estado UI ===== */
+  sidebarOpen = false;
   selectedEntity: go.Node | null = null;
   selectedLink: go.Link | null = null;
-  diagramExists = false;   // <- define create vs update
+  diagramExists = false;
   hasChanges = false;
   isExporting = false;
-  resizeMode = false;
 
-  // Relaciones
+  /* ===== Modos ===== */
+  resizeMode = false;
   isCreatingRelation = false;
-  relationMode = '';
+  relationMode:
+    | ''
+    | 'OneToOne'
+    | 'OneToMany'
+    | 'ManyToMany'
+    | 'Generalizacion'
+    | 'Agregacion'
+    | 'Composicion'
+    | 'Recursividad'
+    | 'Dependencia' = '';
   selectedRelationship: string | null = null;
 
-  // Modal de edición
-  showModal = false;
-  entityName = '';
-  attributes: Attribute[] = [];
-  methods: Method[] = [];
-  newAttribute: Attribute = { name: '', type: 'int', primaryKey: false, foreignKey: false };
-  newMethod: Method = { name: '', type: 'void', visibility: 'public' };
-
-  // WebSocket
+  /* ===== WebSocket ===== */
   private stompClient!: Client;
   private isProcessing = false;
 
-  // Persistencia con debounce para no spamear el backend
+  /* ===== Persistencia ===== */
   private persist$ = new Subject<void>();
 
-  private $ = go.GraphObject.make;
+  /* ===== Modal (reactive forms) ===== */
+  showModal = false;
+  entityForm!: FormGroup;
+  newAttributeForm!: FormGroup;
+  newMethodForm!: FormGroup;
+
+  // Catálogos
+  attributeTypes = ['int', 'varchar', 'datetime', 'boolean', 'char', 'decimal', 'text'];
+  methodReturnTypes = ['void', 'boolean', 'int', 'String', 'double', 'Object'];
+  methodVisibilities: Array<'public' | 'private' | 'protected'> = ['public', 'private', 'protected'];
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private diagramService: DiagramService
+    private diagramService: DiagramService,
+    private fb: FormBuilder
   ) {}
 
+  /* =======================
+   *   Ciclo de vida
+   * ======================= */
   ngOnInit(): void {
-    // Ruta: /session/:id/diagram/:idSession
     this.sessionId = Number(this.route.snapshot.paramMap.get('idSession'));
     this.userId = Number(this.route.snapshot.paramMap.get('id'));
     this.token = localStorage.getItem('auth_token') || '';
 
-    // Debounce para actualizaciones frecuentes (mover nodos, etc.)
-    this.persist$.pipe(debounceTime(400)).subscribe(() => {
-      this.persistDiagram();
+    // Persistencia con debounce
+    this.persist$.pipe(debounceTime(400)).subscribe(() => this.persistDiagram());
+
+    // Formularios
+    this.entityForm = this.fb.group({
+      name: ['', [Validators.required, Validators.maxLength(80)]],
+      attributes: this.fb.array([]),
+      methods: this.fb.array([]),
+    });
+
+    this.newAttributeForm = this.fb.group({
+      name: ['', [Validators.required, Validators.maxLength(80)]],
+      type: ['', Validators.required],
+      primaryKey: [false],
+      foreignKey: [false],
+    });
+
+    this.newMethodForm = this.fb.group({
+      name: ['', [Validators.required, Validators.maxLength(80)]],
+      type: ['void', Validators.required],
+      visibility: ['public', Validators.required],
     });
   }
 
@@ -116,18 +191,53 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   async ngOnDestroy(): Promise<void> {
-    if (this.stompClient) {
-      try { await this.stompClient.deactivate(); } catch {}
-    }
+    try {
+      if (this.stompClient) await this.stompClient.deactivate();
+    } catch {}
     if (this.diagram) this.diagram.div = null;
   }
 
+  /* =======================
+   *   Helpers / Getters
+   * ======================= */
   private generateClientId(): string {
     // @ts-ignore
-    return (crypto && crypto.randomUUID) ? crypto.randomUUID() : `c_${Date.now()}_${Math.random()}`;
+    return (crypto && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : `c_${Date.now()}_${Math.random()}`;
   }
 
-  // ===== INICIALIZACIÓN GOJS =====
+  get attributesFA(): FormArray<FormGroup> {
+    return this.entityForm.get('attributes') as FormArray<FormGroup>;
+  }
+  get methodsFA(): FormArray<FormGroup> {
+    return this.entityForm.get('methods') as FormArray<FormGroup>;
+  }
+
+  private buildAttributeFG(a: Attribute): FormGroup {
+    return this.fb.group({
+      name: new FormControl(a.name, [Validators.required, Validators.maxLength(80)]),
+      type: new FormControl(a.type, Validators.required),
+      primaryKey: new FormControl(a.primaryKey),
+      foreignKey: new FormControl(a.foreignKey),
+    });
+  }
+
+  private buildMethodFG(m: Method): FormGroup {
+    return this.fb.group({
+      name: new FormControl(m.name, [Validators.required, Validators.maxLength(80)]),
+      type: new FormControl(m.type, Validators.required),
+      visibility: new FormControl(m.visibility, Validators.required),
+    });
+  }
+
+  asFormGroup(ctrl: AbstractControl): FormGroup {
+    return ctrl as FormGroup;
+  }
+
+  /* =======================
+   *   Inicialización GoJS
+   * ======================= */
   private initDiagram(): void {
     const $ = this.$;
 
@@ -139,8 +249,8 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
         fromMult: '1',
         toMult: '1',
         styleScale: 1.6,
-        key: undefined
-      }
+        key: undefined,
+      },
     });
 
     this.setupDiagramListeners();
@@ -149,14 +259,16 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   private setupDiagramListeners(): void {
-    // Cambios en el modelo -> broadcast y persist
+    // Cambios en el modelo
     this.diagram.model.addChangedListener((e: go.ChangedEvent) => {
       if (!e.isTransactionFinished) return;
       this.hasChanges = true;
       this.isProcessing = true;
-      this.sendDiagramUpdate('fullDiagram', { data: JSON.parse(this.diagram.model.toJson()) });
 
-      // Si ya existe, actualiza con debounce
+      this.sendDiagramUpdate('fullDiagram', {
+        data: JSON.parse(this.diagram.model.toJson()),
+      });
+
       if (this.diagramExists) this.persist$.next();
     });
 
@@ -177,7 +289,7 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
         if (part instanceof go.Node) {
           const updatedNode = {
             key: part.data.key,
-            loc: `${part.location.x} ${part.location.y}`
+            loc: `${part.location.x} ${part.location.y}`,
           };
           this.sendDiagramUpdate('nodePosition', { nodeData: updatedNode });
         }
@@ -185,12 +297,14 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
       if (this.diagramExists) this.persist$.next();
     });
 
-    // Creación de enlaces
+    // Link creado
     this.diagram.addDiagramListener('LinkDrawn', (e: go.DiagramEvent) => {
       const link = e.subject as go.Link;
       if (!link) return;
 
-      const type = this.relationMode || (link.data && link.data.relationship) || 'OneToOne';
+      const type =
+        this.relationMode || (link.data && link.data.relationship) || 'OneToOne';
+
       if (type === 'ManyToMany') {
         this.handleManyToManyRelation(link.data);
         if (this.isCreatingRelation) this.deactivateRelationMode();
@@ -207,6 +321,7 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
         this.diagram.commitTransaction('Patch Link Type');
         this.sendDiagramUpdate('newLink', { linkData: link.data });
       }
+
       if (this.isCreatingRelation) this.deactivateRelationMode();
       link.isSelected = true;
 
@@ -242,22 +357,26 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
           const node = obj.part as go.Node;
           const keep = (node?.isSelected ?? false) || this.isCreatingRelation;
           if (node) this.showPorts(node, keep);
-        }
+        },
       },
-      new go.Binding('location', 'loc', go.Point.parse).makeTwoWay(go.Point.stringify),
+      new go.Binding('location', 'loc', go.Point.parse).makeTwoWay(
+        go.Point.stringify
+      ),
 
       $(go.Shape, 'RoundedRectangle', {
         name: 'SHAPE',
-        fill: 'lightblue',
-        stroke: 'black',
+        fill: '#9E9E9E',
+        stroke: '#424242',
         strokeWidth: 2,
-        minSize: new go.Size(NODE_MIN_W, NODE_MIN_H)
+        minSize: new go.Size(NODE_MIN_W, NODE_MIN_H),
       }),
       new go.Binding('desiredSize', 'size', (s?: string) => {
         if (!s) return undefined;
         const [w, h] = (s || `${NODE_MIN_W} ${NODE_MIN_H}`).split(' ').map(Number);
         return new go.Size(w, h);
-      }).makeTwoWay((sz?: go.Size) => (sz ? `${Math.round(sz.width)} ${Math.round(sz.height)}` : undefined)),
+      }).makeTwoWay((sz?: go.Size) =>
+        sz ? `${Math.round(sz.width)} ${Math.round(sz.height)}` : undefined
+      ),
 
       $(
         go.Panel,
@@ -272,7 +391,7 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
             font: FONT_HEADER,
             stroke: '#333',
             textAlign: 'center',
-            wrap: go.TextBlock.WrapFit
+            wrap: go.TextBlock.WrapFit,
           },
           new go.Binding('text', 'name')
         ),
@@ -283,17 +402,19 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
           strokeWidth: 1,
           height: 1,
           stretch: go.GraphObject.Horizontal,
-          margin: new go.Margin(0, 4, 4, 4)
+          margin: new go.Margin(0, 4, 4, 4),
         }),
 
         // Atributos
         $(
-          go.Panel, 'Vertical',
+          go.Panel,
+          'Vertical',
           { stretch: go.GraphObject.Horizontal, defaultAlignment: go.Spot.Left },
           new go.Binding('itemArray', 'attributes'),
           {
             itemTemplate: $(
-              go.Panel, 'Horizontal',
+              go.Panel,
+              'Horizontal',
               { margin: new go.Margin(1, 4, 1, 8), stretch: go.GraphObject.Horizontal },
               $(
                 go.TextBlock,
@@ -301,7 +422,7 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
                   font: FONT_BASE,
                   stroke: '#333',
                   textAlign: 'left',
-                  wrap: go.TextBlock.WrapFit
+                  wrap: go.TextBlock.WrapFit,
                 },
                 new go.Binding('text', '', (attr: Attribute) => {
                   const pk = attr.primaryKey ? ' [PK]' : '';
@@ -309,31 +430,34 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
                   return `${attr.name}: ${attr.type}${pk}${fk}`;
                 })
               )
-            )
+            ),
           }
         ),
 
-        // Línea métodos (si hay)
+        // Línea métodos
         $(
-          go.Shape, 'LineH',
+          go.Shape,
+          'LineH',
           {
             stroke: 'black',
             strokeWidth: 1,
             height: 1,
             stretch: go.GraphObject.Horizontal,
-            margin: new go.Margin(4, 4, 4, 4)
+            margin: new go.Margin(4, 4, 4, 4),
           },
           new go.Binding('visible', 'methods', (m: Method[]) => Array.isArray(m) && m.length > 0)
         ),
 
         // Métodos
         $(
-          go.Panel, 'Vertical',
+          go.Panel,
+          'Vertical',
           { stretch: go.GraphObject.Horizontal, defaultAlignment: go.Spot.Left },
           new go.Binding('itemArray', 'methods'),
           {
             itemTemplate: $(
-              go.Panel, 'Horizontal',
+              go.Panel,
+              'Horizontal',
               { margin: new go.Margin(1, 4, 1, 8), stretch: go.GraphObject.Horizontal },
               $(
                 go.TextBlock,
@@ -341,11 +465,11 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
                   font: FONT_BASE,
                   stroke: '#333',
                   textAlign: 'left',
-                  wrap: go.TextBlock.WrapFit
+                  wrap: go.TextBlock.WrapFit,
                 },
                 new go.Binding('text', '', (m: Method) => `${m.visibility} ${m.name}(): ${m.type}`)
               )
-            )
+            ),
           }
         )
       ),
@@ -361,9 +485,11 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
   private setupLinkTemplate(): void {
     const $ = this.$;
     const LINK_STROKE = 3;
-    const LABEL_FONT = 'bold 13px sans-serif';
-    const LABEL_BG = 'white';
     const ARROW_SCALE = 1.6;
+    const LABEL_FONT =
+      '600 12px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif';
+    const MULT_FONT =
+      '1000 18px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif';
 
     this.diagram.linkTemplate = $(
       go.Link,
@@ -375,92 +501,371 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
         relinkableTo: true,
         selectable: true,
         deletable: true,
-        selectionChanged: (part: go.Part) => this.onLinkSelected(part as go.Link)
+        selectionChanged: (part: go.Part) => this.onLinkSelected(part as go.Link),
+
+        // Separa las etiquetas del borde del nodo ⇒ no corta los puntos
+        fromEndSegmentLength: 36,
+        toEndSegmentLength: 36,
+        adjusting: go.LinkAdjusting.End,
       },
 
+      // Trazo
       $(go.Shape, { isPanelMain: true, strokeWidth: LINK_STROKE },
         new go.Binding('strokeDashArray', 'relationship', this.getDashArray)
       ),
 
+      // Puntas
       $(go.Shape,
         new go.Binding('toArrow', 'relationship', this.getArrowType),
         { stroke: 'black', fill: 'black' },
         new go.Binding('scale', 'styleScale', (s?: number) => s || ARROW_SCALE)
       ),
-
       $(go.Shape,
         new go.Binding('fromArrow', 'relationship', this.getFromArrow),
         new go.Binding('fill', 'relationship', this.getFromArrowFill),
         { stroke: 'black' },
-        new go.Binding('scale', 'styleScale', (s?: number) => s || ARROW_SCALE)
+        new go.Binding('scale', '', (d: any) =>
+          (d.relationship === 'Agregacion' || d.relationship === 'Composicion')
+            ? 2.9
+            : (d.styleScale ?? 1.6)
+        )
       ),
 
-      // Mult "from"
+      // ===== ORIGEN =====
       $(go.TextBlock,
         {
           segmentIndex: 0,
-          segmentOffset: new go.Point(0, -20),
+          segmentOffset: new go.Point(10, -18),
+          segmentOrientation: go.Orientation.None,
+          angle: 0,
           font: LABEL_FONT,
-          background: LABEL_BG,
-          margin: 2,
-          stroke: '#111'
+          stroke: '#111',
+          wrap: go.TextBlock.None,
+          overflow: go.TextBlock.OverflowClip,
+          textAlign: 'center',
         },
-        new go.Binding('visible', '', (d: any) => this.showMultLabel(d)),
-        new go.Binding('text', 'fromMult', (t?: string) => t || '1')
+        new go.Binding('visible', 'relationship',
+          (r: string) => r === 'OneToOne' || r === 'OneToMany'),
+        new go.Binding('text', '', (_d: DiagramLink) => '1')
       ),
 
-      // Mult "to"
+      // ===== DESTINO =====
       $(go.TextBlock,
         {
           segmentIndex: -1,
-          segmentOffset: new go.Point(0, -20),
-          font: LABEL_FONT,
-          background: LABEL_BG,
-          margin: 2,
-          stroke: '#111'
+          segmentOffset: new go.Point(-10, -16),
+          segmentOrientation: go.Orientation.None,
+          angle: 0,
+          font: MULT_FONT,
+          stroke: '#111',
+          wrap: go.TextBlock.None,
+          overflow: go.TextBlock.OverflowClip,
+          textAlign: 'center',
         },
-        new go.Binding('visible', '', (d: any) => this.showMultLabel(d)),
-        new go.Binding('text', 'toMult', (t?: string) => t || '1')
+        new go.Binding('visible', 'relationship',
+          (r: string) => r === 'OneToOne' || r === 'OneToMany'),
+        new go.Binding('text', '', (d: DiagramLink) => this.getToMultiplicityText(d))
       )
     );
   }
 
-  // ===== AUXILIARES GOJS =====
-  private makePort(name: string, spot: go.Spot): go.GraphObject {
-    const $ = this.$;
-    return $(go.Shape, 'Circle', {
-      fill: '#007bff',
-      stroke: 'white',
-      strokeWidth: 2,
-      desiredSize: new go.Size(10, 10),
-      portId: name,
-      fromSpot: spot,
-      toSpot: spot,
-      fromLinkable: true,
-      toLinkable: true,
-      cursor: 'pointer',
-      alignment: spot,
-      visible: false
+  /* ===== Helpers multiplicidad ===== */
+  private getFromMultiplicityText(d: DiagramLink): string {
+    if (d.relationship === 'OneToOne') return '1';
+    if (d.relationship === 'OneToMany') return '1';
+    return '';
+  }
+  private getToMultiplicityText(d: DiagramLink): string {
+    if (d.relationship === 'OneToOne') return '1';
+    if (d.relationship === 'OneToMany') return '*'; // mostramos como 1..*
+    return '';
+  }
+
+  // Apariencia flechas
+  private getArrowType = (rel: string) => (rel === 'Generalizacion' ? 'OpenTriangle' : '');
+  private getFromArrow = (rel: string) =>
+    (rel === 'Agregacion' || rel === 'Composicion') ? 'Diamond' : '';
+  private getFromArrowFill = (rel: string) =>
+    (rel === 'Composicion') ? 'black' : (rel === 'Agregacion' ? 'white' : null);
+  private getDashArray = (rel: string) => (rel === 'Dependencia' ? [4, 2] : null);
+
+  /* =======================
+   *   Acciones UI
+   * ======================= */
+  toggleSidebar(): void {
+    this.sidebarOpen = !this.sidebarOpen;
+  }
+
+  // === helpers de normalización ===
+  private toPascal(raw: string): string {
+    return raw
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // saca acentos
+      .replace(/[^A-Za-z0-9]+/g, ' ')                  // separadores → espacio
+      .trim().split(/\s+/)
+      .map(p => p.charAt(0).toUpperCase() + p.slice(1))
+      .join('');
+  }
+  private toLowerCamel(raw: string): string {
+    const p = this.toPascal(raw);
+    return p ? p.charAt(0).toLowerCase() + p.slice(1) : p;
+  }
+
+  addEntity(): void {
+    const model = this.diagram.model as go.GraphLinksModel;
+
+    this.diagram.startTransaction('Add Entity');
+    const newNode: DiagramNode = {
+      key: this.idCounter++,
+      name: 'Nueva Entidad',
+      attributes: [],
+      methods: [],
+      loc: '0 0',
+      userSized: false,
+    };
+    model.addNodeData(newNode);
+    this.diagram.commitTransaction('Add Entity');
+
+    this.sendDiagramUpdate('newNode', { nodeData: newNode });
+
+    if (!this.diagramExists) this.persistDiagram(true);
+    else this.persist$.next();
+  }
+// -- Helpers de normalización LLM -> GoJS Model --
+normalizeAiModel(raw: any): any {
+  const modelLike =
+    raw?.data?.class ? raw.data :
+    raw?.model?.data?.class ? raw.model.data :
+    raw;
+
+  if (!modelLike.class || !String(modelLike.class).includes('GraphLinksModel')) {
+    modelLike.class = 'go.GraphLinksModel';
+  }
+
+  modelLike.nodeDataArray = Array.isArray(modelLike.nodeDataArray) ? modelLike.nodeDataArray : [];
+  modelLike.linkDataArray = Array.isArray(modelLike.linkDataArray) ? modelLike.linkDataArray : [];
+
+  const used = new Set<number>();
+  let nextKey = 1;
+  for (const n of modelLike.nodeDataArray) {
+    if (typeof n.key !== 'number') {
+      while (used.has(nextKey)) nextKey++;
+      n.key = nextKey++;
+    }
+    used.add(n.key);
+  }
+
+  const nodeKeys = new Set(modelLike.nodeDataArray.map((n: any) => n.key));
+  modelLike.linkDataArray = modelLike.linkDataArray
+    .filter((l: any) => nodeKeys.has(l.from) && nodeKeys.has(l.to))
+    .map((l: any, i: number) => {
+      if (typeof l.key !== 'number') l.key = i + 1;
+
+      // Normaliza multiplicidades si quieres default
+      if (!l.fromMult) l.fromMult = '1';
+      if (!l.toMult)   l.toMult   = '1';
+
+      // Traduce formas "1:N", "N:1", etc., si vinieran
+      const rel = String(l.relationship || '').toUpperCase().replace(/\s/g, '');
+      if (rel === '1:N' || rel === '1..N' || rel === '1:*') {
+        l.relationship = 'OneToMany';
+        l.fromMult = l.fromMult || '1';
+        l.toMult   = l.toMult   || '*';
+      } else if (rel === 'N:1' || rel === '*:1') {
+        l.relationship = 'OneToMany';
+        l.fromMult = l.fromMult || '*';
+        l.toMult   = l.toMult   || '1';
+      } else if (rel === '1:1') {
+        l.relationship = 'OneToOne';
+        l.fromMult = l.fromMult || '1';
+        l.toMult   = l.toMult   || '1';
+      } else if (rel === 'N:N' || rel === '*:*' || rel === 'M:N' || rel === 'N:M') {
+        l.relationship = 'ManyToMany';
+        l.fromMult = l.fromMult || '*';
+        l.toMult   = l.toMult   || '*';
+      }
+
+      // ⚠️ NUEVO: flag para ocultar label central si no hay nada que mostrar
+      const hasCenter =
+        !!(l.relationship || l.label || l.centerText);
+      l._showCenterLabel = hasCenter;
+
+      return l;
+    });
+
+  modelLike.linkKeyProperty = 'key';
+  return modelLike;
+}
+
+
+  deleteSelected(): void {
+    if (!this.diagram) return;
+    this.diagram.focus();
+    this.diagram.commandHandler.deleteSelection();
+    this.selectedEntity = null;
+    this.selectedLink = null;
+    if (this.diagramExists) this.persist$.next();
+  }
+
+  /* =======================
+   *   Modal de Edición
+   * ======================= */
+
+
+
+  
+  openEditDialog(): void {
+    if (!this.selectedEntity) return;
+
+    // Reset y carga
+    this.entityForm.reset();
+    this.attributesFA.clear();
+    this.methodsFA.clear();
+
+    const { name, attributes, methods } = this.selectedEntity.data;
+
+    this.entityForm.get('name')?.setValue(name || '');
+    (attributes || []).forEach((a: Attribute) => this.attributesFA.push(this.buildAttributeFG(a)));
+    (methods || []).forEach((m: Method) => this.methodsFA.push(this.buildMethodFG(m)));
+
+    this.newAttributeForm.reset({
+      name: '',
+      type: '',
+      primaryKey: false,
+      foreignKey: false,
+    });
+
+    this.newMethodForm.reset({
+      name: '',
+      type: 'void',
+      visibility: 'public',
+    });
+
+    this.showModal = true;
+  }
+
+  closeModal(): void {
+    this.showModal = false;
+  }
+
+  saveEntity(): void {
+    if (!this.selectedEntity) return;
+    if (this.entityForm.invalid) {
+      this.entityForm.markAllAsTouched();
+      return;
+    }
+
+    const v = this.entityForm.value as {
+      name: string;
+      attributes: Attribute[];
+      methods: Method[];
+    };
+
+    this.diagram.startTransaction('Update Entity');
+
+    if (!this.selectedEntity.data.userSized) {
+      this.diagram.model.setDataProperty(this.selectedEntity.data, 'size', undefined);
+    }
+    this.diagram.model.setDataProperty(this.selectedEntity.data, 'name', v.name);
+    this.diagram.model.setDataProperty(this.selectedEntity.data, 'attributes', v.attributes || []);
+    this.diagram.model.setDataProperty(this.selectedEntity.data, 'methods', v.methods || []);
+
+    this.diagram.commitTransaction('Update Entity');
+
+    const updated = { ...this.selectedEntity.data };
+    this.sendDiagramUpdate('updateNode', { nodeData: updated });
+
+    this.closeModal();
+    if (this.diagramExists) this.persist$.next();
+  }
+
+  // Atributos
+  addAttributeFromForm(): void {
+    if (this.newAttributeForm.invalid) {
+      this.newAttributeForm.markAllAsTouched();
+      return;
+    }
+    const value = this.newAttributeForm.value as Attribute;
+    this.attributesFA.push(this.buildAttributeFG(value));
+    this.newAttributeForm.reset({
+      name: '',
+      type: '',
+      primaryKey: false,
+      foreignKey: false,
     });
   }
-
-  private showPorts(node: go.Node, show: boolean): void {
-    if (!node || !node.ports) return;
-    node.ports.each((p: go.GraphObject) => (p.visible = !!show));
+  removeAttribute(index: number): void {
+    this.attributesFA.removeAt(index);
   }
 
-  private showMultLabel(data: any): boolean {
-    return data && (data.relationship === 'OneToOne' || data.relationship === 'OneToMany');
+  // Métodos
+  addMethodFromForm(): void {
+    if (this.newMethodForm.invalid) {
+      this.newMethodForm.markAllAsTouched();
+      return;
+    }
+    const value = this.newMethodForm.value as Method;
+    this.methodsFA.push(this.buildMethodFG(value));
+    this.newMethodForm.reset({
+      name: '',
+      type: 'void',
+      visibility: 'public',
+    });
+  }
+  removeMethod(index: number): void {
+    this.methodsFA.removeAt(index);
   }
 
-  private ensureLinkMultiplicities(l: any): void {
+  /* =======================
+   *   Relaciones
+   * ======================= */
+  selectRelationship(type: typeof this.relationMode): void {
+    this.relationMode = type;
+    this.isCreatingRelation = true;
+    this.selectedRelationship = type;
+
+    const archetype = this.setupLinkArchetype(type);
+    if (archetype && this.diagram?.toolManager?.linkingTool) {
+      this.diagram.toolManager.linkingTool.archetypeLinkData = archetype;
+    }
+    if (this.diagram?.div) this.diagram.div.style.cursor = 'crosshair';
+  }
+
+  private setupLinkArchetype(type: typeof this.relationMode): any {
+    const base = { key: undefined, styleScale: 1.6 };
+    const map: Record<string, any> = {
+      OneToOne: { relationship: 'OneToOne', fromMult: '1', toMult: '1' },
+      OneToMany: { relationship: 'OneToMany', fromMult: '1', toMult: '*' },
+      ManyToMany: { relationship: 'ManyToMany' },
+      Generalizacion: { relationship: 'Generalizacion' },
+      Agregacion: { relationship: 'Agregacion' },
+      Composicion: { relationship: 'Composicion' },
+      Recursividad: { relationship: 'Recursividad' },
+      Dependencia: { relationship: 'Dependencia' },
+    };
+    return { ...base, ...(map[type || 'OneToOne']) };
+  }
+
+  deactivateRelationMode(): void {
+    this.isCreatingRelation = false;
+    this.relationMode = '';
+    this.selectedRelationship = null;
+    if (this.diagram?.div) this.diagram.div.style.cursor = 'default';
+    if (this.diagram) {
+      this.diagram.nodes.each((node: go.Node) => {
+        const keep = node.isSelected;
+        this.showPorts(node, keep);
+      });
+    }
+  }
+
+  private ensureLinkMultiplicities(l: DiagramLink | any): void {
     if (!l) return;
     if (l.relationship === 'OneToOne') {
-      l.fromMult = l.fromMult || '1';
-      l.toMult = l.toMult || '1';
+      l.fromMult = '1';
+      l.toMult = '1';
     } else if (l.relationship === 'OneToMany') {
-      l.fromMult = l.fromMult || '1';
-      l.toMult = l.toMult || '*';
+      l.fromMult = '1';
+      l.toMult = '*'; // canonical
     } else {
       delete l.fromMult;
       delete l.toMult;
@@ -469,7 +874,7 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   private setupLinkByRelationType(linkData: any, relationType: string): any {
-    const updated = { ...linkData };
+    const updated: DiagramLink = { ...(linkData as DiagramLink) };
     switch (relationType) {
       case 'OneToOne':
         updated.relationship = 'OneToOne';
@@ -519,10 +924,17 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
     const midX = (a.location.x + b.location.x) / 2;
     const midY = (a.location.y + b.location.y) / 2;
 
+    const aName = this.toPascal(a.data.name);
+    const bName = this.toPascal(b.data.name);
+    const joinName = `${aName}${bName}`;
+
     const interNode: DiagramNode = {
       key: this.idCounter++,
-      name: `${a.data.name}_${b.data.name}`,
-      attributes: [],
+      name: joinName,
+      attributes: [
+        { name: `${this.toLowerCamel(a.data.name)}Id`, type: 'int', primaryKey: true, foreignKey: true },
+        { name: `${this.toLowerCamel(b.data.name)}Id`, type: 'int', primaryKey: true, foreignKey: true },
+      ],
       methods: [],
       loc: `${midX} ${midY}`,
       userSized: false
@@ -536,7 +948,7 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
       fromMult: '1',
       toMult: '*',
       styleScale: 1.6,
-      key: this.linkCounter++
+      key: this.linkCounter++,
     };
     const l2: DiagramLink = {
       from: b.data.key,
@@ -545,7 +957,7 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
       fromMult: '1',
       toMult: '*',
       styleScale: 1.6,
-      key: this.linkCounter++
+      key: this.linkCounter++,
     };
 
     model.addLinkData(l1);
@@ -559,152 +971,30 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
     if (this.diagramExists) this.persist$.next();
   }
 
-  // Apariencia de enlaces
-  private getArrowType = (rel: string) => rel === 'Generalizacion' ? 'OpenTriangle' : '';
-  private getFromArrow = (rel: string) => (rel === 'Agregacion' || rel === 'Composicion') ? 'Diamond' : '';
-  private getFromArrowFill = (rel: string) => (rel === 'Composicion') ? 'black' : (rel === 'Agregacion' ? 'white' : null);
-  private getDashArray = (rel: string) => rel === 'Dependencia' ? [4, 2] : null;
-
-  // ===== ACCIONES UI =====
-  addEntity(): void {
-    const model = this.diagram.model as go.GraphLinksModel;
-
-    this.diagram.startTransaction('Add Entity');
-    const newNode: DiagramNode = {
-      key: this.idCounter++,
-      name: 'Nueva Entidad',
-      attributes: [],
-      methods: [],
-      loc: '0 0',
-      userSized: false
-    };
-    model.addNodeData(newNode);
-    this.diagram.commitTransaction('Add Entity');
-
-    this.sendDiagramUpdate('newNode', { nodeData: newNode });
-
-    // Si no existe aún en backend -> crea, si ya existe -> update
-    if (!this.diagramExists) {
-      this.persistDiagram(true); // fuerza create
-    } else {
-      this.persist$.next();      // update con debounce
-    }
-  }
-
-  deleteSelected(): void {
-    this.diagram.commandHandler.deleteSelection();
-    if (this.diagramExists) this.persist$.next();
-  }
-
-  openEditDialog(): void {
-    if (!this.selectedEntity) return;
-    this.entityName = this.selectedEntity.data.name;
-    this.attributes = Array.isArray(this.selectedEntity.data.attributes) ? [...this.selectedEntity.data.attributes] : [];
-    this.methods = Array.isArray(this.selectedEntity.data.methods) ? [...this.selectedEntity.data.methods] : [];
-    this.showModal = true;
-  }
-
-  closeModal(): void {
-    this.showModal = false;
-  }
-
-  saveEntity(): void {
-    if (!this.selectedEntity) return;
-    this.isProcessing = true;
-
-    this.diagram.startTransaction('Update Entity');
-    if (!this.selectedEntity.data.userSized) {
-      this.diagram.model.setDataProperty(this.selectedEntity.data, 'size', undefined);
-    }
-    this.diagram.model.setDataProperty(this.selectedEntity.data, 'name', this.entityName);
-    this.diagram.model.setDataProperty(this.selectedEntity.data, 'attributes', [...this.attributes]);
-    this.diagram.model.setDataProperty(this.selectedEntity.data, 'methods', [...this.methods]);
-    this.diagram.commitTransaction('Update Entity');
-
-    const updatedEntity = { ...this.selectedEntity.data };
-    this.sendDiagramUpdate('updateNode', { nodeData: updatedEntity });
-    this.closeModal();
-
-    if (this.diagramExists) this.persist$.next();
-  }
-
-  // Atributos
-  addAttribute(): void {
-    if (this.newAttribute.name && this.newAttribute.type) {
-      this.attributes.push({ ...this.newAttribute });
-      this.newAttribute = { name: '', type: 'int', primaryKey: false, foreignKey: false };
-    }
-  }
-  removeAttribute(index: number): void { this.attributes.splice(index, 1); }
-  togglePrimaryKey(): void { this.newAttribute.primaryKey = !this.newAttribute.primaryKey; }
-  toggleForeignKey(): void { this.newAttribute.foreignKey = !this.newAttribute.foreignKey; }
-
-  // Métodos
-  addMethod(): void {
-    if (this.newMethod.name) {
-      this.methods.push({ ...this.newMethod });
-      this.newMethod = { name: '', type: 'void', visibility: 'public' };
-    }
-  }
-  removeMethod(index: number): void { this.methods.splice(index, 1); }
-
-  // ===== RELACIONES =====
-  selectRelationship(type: string): void {
-    this.relationMode = type;
-    this.isCreatingRelation = true;
-    this.selectedRelationship = type;
-
-    const archetype = this.setupLinkArchetype(type);
-    if (archetype && this.diagram?.toolManager?.linkingTool) {
-      this.diagram.toolManager.linkingTool.archetypeLinkData = archetype;
-    }
-    if (this.diagram?.div) this.diagram.div.style.cursor = 'crosshair';
-  }
-
-  private setupLinkArchetype(type: string): any {
-    const base = { key: undefined, styleScale: 1.6 };
-    const map: { [key: string]: any } = {
-      OneToOne: { relationship: 'OneToOne', fromMult: '1', toMult: '1' },
-      OneToMany: { relationship: 'OneToMany', fromMult: '1', toMult: '*' },
-      ManyToMany: { relationship: 'ManyToMany' },
-      Generalizacion: { relationship: 'Generalizacion' },
-      Agregacion: { relationship: 'Agregacion' },
-      Composicion: { relationship: 'Composicion' },
-      Recursividad: { relationship: 'Recursividad' },
-      Dependencia: { relationship: 'Dependencia' }
-    };
-    return { ...base, ...(map[type] || map['OneToOne']) };
-  }
-
-  deactivateRelationMode(): void {
-    this.isCreatingRelation = false;
-    this.relationMode = '';
-    this.selectedRelationship = null;
-    if (this.diagram?.div) this.diagram.div.style.cursor = 'default';
-    if (this.diagram) {
-      this.diagram.nodes.each((node: go.Node) => {
-        const keep = node.isSelected;
-        this.showPorts(node, keep);
-      });
-    }
-  }
-
-  // ===== WEBSOCKET =====
+  /* =======================
+   *   WS y Persistencia
+   * ======================= */
   private connectToWebSocket(): void {
     this.stompClient = new Client({
       webSocketFactory: () => new SockJS(`${this.baseURL}/ws-diagram`),
       reconnectDelay: 5000,
       onConnect: () => {
         if (!this.sessionId) return;
-        this.stompClient.subscribe(`/topic/diagrams/${this.sessionId}`, (message: IMessage) => {
-          const updated = JSON.parse(message.body);
-          if (!updated) return;
-          if (updated.clientId && updated.clientId === this.clientId) return; // ignora tu propio eco
-          if (this.isProcessing) { this.isProcessing = false; return; }
-          this.handleWebSocketUpdate(updated);
-        });
+        this.stompClient.subscribe(
+          `/topic/diagrams/${this.sessionId}`,
+          (message: IMessage) => {
+            const updated = JSON.parse(message.body);
+            if (!updated) return;
+            if (updated.clientId && updated.clientId === this.clientId) return;
+            if (this.isProcessing) {
+              this.isProcessing = false;
+              return;
+            }
+            this.handleWebSocketUpdate(updated);
+          }
+        );
       },
-      onStompError: (err) => console.error('Error WS:', err)
+      onStompError: (err) => console.error('Error WS:', err),
     });
 
     this.stompClient.activate();
@@ -715,7 +1005,7 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
     const payload = { clientId: this.clientId, eventType, ...data };
     this.stompClient.publish({
       destination: `/app/updateDiagram/${this.sessionId}`,
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     });
   }
 
@@ -738,7 +1028,10 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
       case 'updateNode': {
         const nd = updated.nodeData;
         const it = model.findNodeDataForKey(nd.key);
-        if (it) Object.keys(nd).forEach(k => k !== 'key' && model.setDataProperty(it, k, (nd as any)[k]));
+        if (it)
+          Object.keys(nd).forEach((k) =>
+            k !== 'key' ? model.setDataProperty(it, k, (nd as any)[k]) : null
+          );
         break;
       }
       case 'newLink': {
@@ -752,21 +1045,23 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
         break;
       }
       default:
-        // otros tipos a futuro
         break;
     }
   }
 
-  // ===== PERSISTENCIA (create vs update) =====
   private currentModelAsObject(): object {
     try {
       return JSON.parse(this.diagram.model.toJson());
     } catch {
-      return { class: 'GraphLinksModel', nodeDataArray: [], linkDataArray: [], linkKeyProperty: 'key' };
+      return {
+        class: 'GraphLinksModel',
+        nodeDataArray: [],
+        linkDataArray: [],
+        linkKeyProperty: 'key',
+      };
     }
   }
 
-  // wrapper para tu HTML (btn "Guardar Diagrama")
   public updateDiagram(): void {
     this.persistDiagram();
   }
@@ -774,20 +1069,21 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
   private persistDiagram(forceCreate = false): void {
     const dataObj = this.currentModelAsObject();
 
-    // Si tu backend envuelve en data, lo mandamos así:
     const payload: DiagramPostParams = {
       sessionId: this.sessionId,
-      data: dataObj
+      data: dataObj,
     };
 
     if (forceCreate || !this.diagramExists) {
       this.diagramService.createDiagram(payload).subscribe({
-        next: () => { this.diagramExists = true; },
-        error: (err) => console.error('Error al crear diagrama:', err)
+        next: () => {
+          this.diagramExists = true;
+        },
+        error: (err) => console.error('Error al crear diagrama:', err),
       });
     } else {
       this.diagramService.updateDiagram(payload).subscribe({
-        error: (err) => console.error('Error al actualizar diagrama:', err)
+        error: (err) => console.error('Error al actualizar diagrama:', err),
       });
     }
   }
@@ -795,7 +1091,6 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
   private loadDiagram(): void {
     this.diagramService.getDiagramBySession(this.sessionId).subscribe({
       next: (raw: any) => {
-        // El backend a veces retorna { data: {...} }
         const wrapper = raw?.data ?? raw;
         const modelObj = typeof wrapper === 'string' ? JSON.parse(wrapper) : wrapper;
 
@@ -806,33 +1101,64 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
 
           const nodes = (this.diagram.model as go.GraphLinksModel).nodeDataArray as any[];
           const links = (this.diagram.model as go.GraphLinksModel).linkDataArray as any[];
-          this.idCounter = (nodes?.reduce((max, n) => Math.max(max, Number(n.key) || 0), 0) || 0) + 1;
-          this.linkCounter = (links?.reduce((max, l) => Math.max(max, Number(l.key) || 0), 0) || 0) + 1;
+          this.idCounter =
+            (nodes?.reduce((max, n) => Math.max(max, Number(n.key) || 0), 0) || 0) + 1;
+          this.linkCounter =
+            (links?.reduce((max, l) => Math.max(max, Number(l.key) || 0), 0) || 0) + 1;
 
           this.diagramExists = true;
         } else {
-          // No había diagrama
           this.diagramExists = false;
         }
       },
       error: (err) => {
         console.error('getDiagramBySession error:', err);
-        // fallback: deja crear al primer cambio
         this.diagramExists = false;
-      }
+      },
     });
   }
 
-  // ===== SELECCIÓN / UI =====
+  /* =======================
+   *   Utilidades GoJS
+   * ======================= */
+  private makePort(name: string, spot: go.Spot): go.GraphObject {
+    const $ = this.$;
+    return $(go.Shape, 'Circle', {
+      fill: '#007bff',
+      stroke: 'white',
+      strokeWidth: 2,
+      desiredSize: new go.Size(10, 10),
+      portId: name,
+      fromSpot: spot,
+      toSpot: spot,
+      fromLinkable: true,
+      toLinkable: true,
+      cursor: 'pointer',
+      alignment: spot,
+      visible: false,
+    });
+  }
+
+  private showPorts(node: go.Node, show: boolean): void {
+    if (!node || !node.ports) return;
+    node.ports.each((p: go.GraphObject) => (p.visible = !!show));
+  }
+
   private onNodeSelected(node: go.Node): void {
     if (node.isSelected) {
       this.selectedEntity = node;
       const shape = node.findObject('SHAPE') as go.Shape | null;
-      if (shape) { shape.stroke = '#4CAF50'; shape.strokeWidth = 2; }
+      if (shape) {
+        shape.stroke = '#4CAF50';
+        shape.strokeWidth = 2;
+      }
     } else {
       this.selectedEntity = null;
       const shape = node.findObject('SHAPE') as go.Shape | null;
-      if (shape) { shape.stroke = 'black'; shape.strokeWidth = 2; }
+      if (shape) {
+        shape.stroke = '#424242';
+        shape.strokeWidth = 2;
+      }
     }
   }
 
@@ -840,13 +1166,12 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
     this.selectedLink = link.isSelected ? link : null;
   }
 
-  // ===== NAVEGACIÓN =====
+  /* =======================
+   *   Navegación / Redimensionar
+   * ======================= */
   goBack(): void {
-    if (window.history.length > 1) {
-      this.router.navigate(['/']);
-    } else {
-      this.router.navigate(['/sessions']);
-    }
+    if (window.history.length > 1) this.router.navigate(['/']);
+    else this.router.navigate(['/sessions']);
   }
 
   toggleResizeMode(): void {
@@ -857,4 +1182,150 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
     this.diagram.commitTransaction('Toggle Resizable');
     if (this.diagramExists) this.persist$.next();
   }
+
+  /* =======================
+   *   Export Backend
+   * ======================= */
+  exportBackend(): void {
+    if (!this.sessionId) return;
+
+    this.isExporting = true;
+    this.diagramService.exportBackend(this.sessionId).subscribe({
+      next: () => {
+        this.isExporting = false;
+        alert('Exportación completada. Revisa tus descargas.');
+      },
+      error: (err) => {
+        this.isExporting = false;
+        console.error('Error exportación:', err);
+        alert('Error durante la exportación.');
+      }
+    });
+  }
+
+  /* =======================
+   *   Chat IA (UI + consumo)
+   * ======================= */
+
+  // Abrir/cerrar
+  toggleAi() {
+    this.aiOpen = !this.aiOpen;
+    if (this.aiOpen) setTimeout(() => this.scrollAiToBottom(), 0);
+  }
+maybeSend(ev: KeyboardEvent | Event) {
+  const e = ev as KeyboardEvent;
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    this.sendAi();
+  }
+}
+
+
+  private scrollAiToBottom() {
+    try {
+      this.aiScroll?.nativeElement?.scrollTo({ top: 999999, behavior: 'smooth' });
+    } catch {}
+  }
+
+  // Enviar al backend / renderizar
+sendAi() {
+  const prompt = (this.aiPrompt || '').trim();
+  if (!prompt || this.aiLoading) return;
+
+  this.aiMessages.push({ role: 'user', text: prompt });
+  this.aiPrompt = '';
+  this.aiLoading = true;
+
+  this.diagramService.applyInstruction(this.sessionId, { prompt, expectFullModel: true })
+    .subscribe({
+      next: (resp) => {
+        const tips = resp?.suggestions ?? [];
+        this.aiMessages.push({
+          role: 'ai',
+          text: tips.length ? 'He actualizado el diagrama. Recomendaciones:' : 'He actualizado el diagrama.',
+          suggestions: tips
+        });
+
+        try {
+          // Lo que realmente usaremos para render
+          let raw: any = resp?.updatedModelJson || '{}';
+
+          // Puede venir como string con ```json ... ```
+          if (typeof raw === 'string') {
+            // quitar fences si existen
+            raw = raw.replace(/```json|```/g, '').trim();
+            raw = JSON.parse(raw);
+          }
+
+          // Puede venir con { model: { data: {...} } } o { data: {...} }
+          if (raw?.model?.data) raw = raw.model.data;
+          else if (raw?.data)   raw = raw.data;
+
+          this.renderFromAi(raw);
+        } catch (e) {
+          console.error('Render IA error:', e);
+          this.aiMessages.push({ role: 'ai', text: 'No pude renderizar el modelo devuelto.' });
+        }
+      },
+      error: (err) => {
+        this.aiMessages.push({
+          role: 'ai',
+          text: 'Error al procesar: ' + (err?.error?.detail || err.message || 'desconocido')
+        });
+      },
+      complete: () => {
+        this.aiLoading = false;
+        this.scrollAiToBottom();
+      }
+    });
+}
+
+private renderFromAi(modelJson: string | any) {
+  // 0) Parse and unwrap defensivo
+  let parsed: any = typeof modelJson === 'string' ? JSON.parse(modelJson) : modelJson;
+  if (parsed?.model?.data) parsed = parsed.model.data;
+  else if (parsed?.data)   parsed = parsed.data;
+
+  // 1) Normalizar SIEMPRE (clase, arrays, keys, links válidos, etc.)
+  const modelLike = this.normalizeAiModel(parsed); // <- tu helper
+
+  // 2) Validaciones mínimas
+  if (!Array.isArray(modelLike.nodeDataArray) || !Array.isArray(modelLike.linkDataArray)) {
+    throw new Error('Modelo IA inválido: faltan nodeDataArray/linkDataArray');
+  }
+
+  // 3) Pausar side-effects mientras cambiamos el modelo
+  this.isProcessing = true;
+
+  try {
+    this.diagram.startTransaction('AI Update');
+
+    // Reemplazo completo del modelo
+    this.diagram.model = (go as any).Model.fromJson(modelLike) as go.GraphLinksModel;
+    (this.diagram.model as go.GraphLinksModel).linkKeyProperty = 'key';
+
+    this.diagram.commitTransaction('AI Update');
+
+    // 4) Recalcular contadores
+    const nodes = modelLike.nodeDataArray as Array<any>;
+    const links = modelLike.linkDataArray as Array<any>;
+
+    const maxNodeKey = nodes.reduce((m, n) => Math.max(m, Number.isFinite(+n.key) ? +n.key : 0), 0);
+    this.idCounter = Math.max(maxNodeKey + 1, 1);
+
+    const maxPosLinkKey = links.reduce((m, l) => Math.max(m, +l.key > 0 ? +l.key : 0), 0);
+    const minNegLinkKey = links.reduce((m, l) => Math.min(m, +l.key < 0 ? +l.key : 0), 0);
+    this.linkCounter = Math.min(minNegLinkKey - 1, -1);
+    // (si usas keys positivas para links en otro flujo, guarda maxPosLinkKey + 1)
+
+    // 5) Ajuste de vista opcional
+    this.diagram.zoomToFit();
+    this.diagram.centerRect(this.diagram.documentBounds);
+  } finally {
+    this.isProcessing = false;
+  }
+}
+
+  
+
 }

@@ -11,3 +11,13 @@ body {
   margin: 0;
   font-family: Roboto, Arial, sans-serif;
 }
+/* Sube el overlay de Angular Material por encima de tu modal custom */
+.cdk-overlay-container,
+.cdk-global-overlay-wrapper {
+  z-index: 10000 !important;
+}
+
+/* algunos temas MDC usan esta clase para el panel del select/menus */
+.mdc-menu-surface--open {
+  z-index: 10001 !important;
+}

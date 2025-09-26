@@ -14,7 +14,7 @@ import { DiagramEditorComponent } from './pages/diagram-editor/diagram-editor.co
     DiagramRoutingModule,
     FormsModule,
     ReactiveFormsModule,
-    MatCardModule,MaterialModule
+    MatCardModule,MaterialModule,
   ]
 })
 export class DiagramModule {}
