@@ -122,7 +122,6 @@
   margin: 10px 0;
 }
 
-/* ===== ÁREA DEL DIAGRAMA ===== */
 .diagram-container {
   flex: 1;
   padding: 20px;
@@ -133,6 +132,7 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  overflow: hidden; /* AÑADIDO - evita scrolls dobles */
 }
 
 .diagram-container.sidebar-open {
@@ -142,26 +142,62 @@
 .diagram {
   width: 100%;
   height: 100%;
+  min-height: 600px; /* AÑADIDO - altura mínima garantizada */
   border: 3px solid var(--primary-color, #d32f2f);
   border-radius: 12px;
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.6);
   background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
   flex-grow: 1;
+  position: relative; /* AÑADIDO */
+  overflow: auto; /* AÑADIDO - permite scroll dentro del diagrama */
+}
+/* AÑADIR DESPUÉS - estilos para el canvas */
+.diagram canvas {
+  outline: none;
 }
 
+/* AÑADIR DESPUÉS - scrollbar personalizado */
+.diagram::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.diagram::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
+}
+
+.diagram::-webkit-scrollbar-thumb {
+  background: rgba(211, 47, 47, 0.4);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.diagram::-webkit-scrollbar-thumb:hover {
+  background: rgba(211, 47, 47, 0.6);
+  background-clip: content-box;
+}
+
+.diagram::-webkit-scrollbar-corner {
+  background: transparent;
+}
 /* ===== INDICADORES DE ESTADO ===== */
 .status-indicators {
-  position: absolute;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
+  position: sticky; /* CAMBIADO */
+  top: 0; /* CAMBIADO */
+  left: 0; /* CAMBIADO */
+  z-index: 100; /* AUMENTADO */
   display: flex;
   flex-direction: column;
   gap: 8px;
   align-items: center;
+  margin-bottom: 15px; /* AÑADIDO */
+  padding: 10px 20px; /* AÑADIDO */
+  background: rgba(248, 249, 250, 0.95); /* AÑADIDO */
+  backdrop-filter: blur(8px); /* AÑADIDO */
+  border-radius: 8px; /* AÑADIDO */
 }
-
 .relation-indicator,
 .resize-indicator,
 .selection-indicator {
@@ -718,20 +754,15 @@
     padding-left: 70px;
   }
 
-  .diagram {
-    height: 70vh;
-    min-height: 400px;
-  }
+ .diagram {
+  min-height: 500px; /* CAMBIADO - solo min-height */
+}
 
-  .status-indicators {
-    position: relative;
-    top: 0;
-    left: 0;
-    transform: none;
-    margin-bottom: 15px;
-    padding: 0 20px;
-  }
-
+.status-indicators {
+  position: relative;
+  margin-bottom: 10px; /* AJUSTADO */
+  padding: 8px 12px; /* AJUSTADO */
+}
   .modal-content {
     width: 95%;
     margin: 20px;

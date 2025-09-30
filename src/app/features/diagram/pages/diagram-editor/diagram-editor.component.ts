@@ -481,94 +481,84 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
       this.makePort('B', go.Spot.Bottom)
     );
   }
+private setupLinkTemplate(): void {
+  const $ = this.$;
+  const LINK_STROKE = 3;
+  const ARROW_SCALE = 1.6;
+  const LABEL_FONT = '600 12px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif';
+  const MULT_FONT  = '1000 18px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif';
 
-  private setupLinkTemplate(): void {
-    const $ = this.$;
-    const LINK_STROKE = 3;
-    const ARROW_SCALE = 1.6;
-    const LABEL_FONT =
-      '600 12px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif';
-    const MULT_FONT =
-      '1000 18px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif';
+  this.diagram.linkTemplate = $(
+    go.Link,
+    {
+      routing: go.Routing.AvoidsNodes,
+      curve: go.Curve.JumpOver,
+      corner: 8,
+      relinkableFrom: true,
+      relinkableTo: true,
+      selectable: true,
+      deletable: true,
+      selectionChanged: (part: go.Part) => this.onLinkSelected(part as go.Link),
+      fromEndSegmentLength: 36,
+      toEndSegmentLength: 36,
+      adjusting: go.LinkAdjusting.End,
+    },
 
-    this.diagram.linkTemplate = $(
-      go.Link,
-      {
-        routing: go.Routing.AvoidsNodes,
-        curve: go.Curve.JumpOver,
-        corner: 8,
-        relinkableFrom: true,
-        relinkableTo: true,
-        selectable: true,
-        deletable: true,
-        selectionChanged: (part: go.Part) => this.onLinkSelected(part as go.Link),
+    $(go.Shape, { isPanelMain: true, strokeWidth: LINK_STROKE },
+      new go.Binding('strokeDashArray', 'relationship', this.getDashArray)
+    ),
 
-        // Separa las etiquetas del borde del nodo ⇒ no corta los puntos
-        fromEndSegmentLength: 36,
-        toEndSegmentLength: 36,
-        adjusting: go.LinkAdjusting.End,
-      },
-
-      // Trazo
-      $(go.Shape, { isPanelMain: true, strokeWidth: LINK_STROKE },
-        new go.Binding('strokeDashArray', 'relationship', this.getDashArray)
-      ),
-
-      // Puntas
-      $(go.Shape,
-        new go.Binding('toArrow', 'relationship', this.getArrowType),
-        { stroke: 'black', fill: 'black' },
-        new go.Binding('scale', 'styleScale', (s?: number) => s || ARROW_SCALE)
-      ),
-      $(go.Shape,
-        new go.Binding('fromArrow', 'relationship', this.getFromArrow),
-        new go.Binding('fill', 'relationship', this.getFromArrowFill),
-        { stroke: 'black' },
-        new go.Binding('scale', '', (d: any) =>
-          (d.relationship === 'Agregacion' || d.relationship === 'Composicion')
-            ? 2.9
-            : (d.styleScale ?? 1.6)
-        )
-      ),
-
-      // ===== ORIGEN =====
-      $(go.TextBlock,
-        {
-          segmentIndex: 0,
-          segmentOffset: new go.Point(10, -18),
-          segmentOrientation: go.Orientation.None,
-          angle: 0,
-          font: LABEL_FONT,
-          stroke: '#111',
-          wrap: go.TextBlock.None,
-          overflow: go.TextBlock.OverflowClip,
-          textAlign: 'center',
-        },
-        new go.Binding('visible', 'relationship',
-          (r: string) => r === 'OneToOne' || r === 'OneToMany'),
-        new go.Binding('text', '', (_d: DiagramLink) => '1')
-      ),
-
-      // ===== DESTINO =====
-      $(go.TextBlock,
-        {
-          segmentIndex: -1,
-          segmentOffset: new go.Point(-10, -16),
-          segmentOrientation: go.Orientation.None,
-          angle: 0,
-          font: MULT_FONT,
-          stroke: '#111',
-          wrap: go.TextBlock.None,
-          overflow: go.TextBlock.OverflowClip,
-          textAlign: 'center',
-        },
-        new go.Binding('visible', 'relationship',
-          (r: string) => r === 'OneToOne' || r === 'OneToMany'),
-        new go.Binding('text', '', (d: DiagramLink) => this.getToMultiplicityText(d))
+    $(go.Shape,
+      new go.Binding('toArrow', 'relationship', this.getArrowType),
+      { stroke: 'black', fill: 'black' },
+      new go.Binding('scale', 'styleScale', (s?: number) => s || ARROW_SCALE)
+    ),
+    $(go.Shape,
+      new go.Binding('fromArrow', 'relationship', this.getFromArrow),
+      new go.Binding('fill', 'relationship', this.getFromArrowFill),
+      { stroke: 'black' },
+      new go.Binding('scale', '', (d: any) =>
+        (d.relationship === 'Agregacion' || d.relationship === 'Composicion') ? 2.9 : (d.styleScale ?? 1.6)
       )
-    );
-  }
+    ),
 
+    // ORIGEN ← fromMult
+    $(go.TextBlock,
+      {
+        segmentIndex: 0,
+        segmentOffset: new go.Point(10, -18),
+        segmentOrientation: go.Orientation.None,
+        angle: 0,
+        font: LABEL_FONT,
+        stroke: '#111',
+        wrap: go.TextBlock.None,
+        overflow: go.TextBlock.OverflowClip,
+        textAlign: 'center',
+      },
+      new go.Binding('visible', 'fromMult', (m?: string) => !!m),
+      new go.Binding('text', 'fromMult', (m?: string) => m || '')
+    ),
+
+    // DESTINO → toMult
+    $(go.TextBlock,
+      {
+        segmentIndex: -1,
+        segmentOffset: new go.Point(-10, -16),
+        segmentOrientation: go.Orientation.None,
+        angle: 0,
+        font: MULT_FONT,
+        stroke: '#111',
+        wrap: go.TextBlock.None,
+        overflow: go.TextBlock.OverflowClip,
+        textAlign: 'center',
+      },
+      new go.Binding('visible', 'toMult', (m?: string) => !!m),
+      new go.Binding('text', 'toMult', (m?: string) => m || '')
+    )
+  );
+}
+
+ 
   /* ===== Helpers multiplicidad ===== */
   private getFromMultiplicityText(d: DiagramLink): string {
     if (d.relationship === 'OneToOne') return '1';
@@ -630,71 +620,163 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
     if (!this.diagramExists) this.persistDiagram(true);
     else this.persist$.next();
   }
+
 // -- Helpers de normalización LLM -> GoJS Model --
 normalizeAiModel(raw: any): any {
-  const modelLike =
-    raw?.data?.class ? raw.data :
-    raw?.model?.data?.class ? raw.model.data :
-    raw;
+  const modelLike: any =
+    (raw && raw.data && raw.data.class) ? raw.data :
+    (raw && raw.model && raw.model.data && raw.model.data.class) ? raw.model.data :
+    (raw || {});
 
   if (!modelLike.class || !String(modelLike.class).includes('GraphLinksModel')) {
     modelLike.class = 'go.GraphLinksModel';
   }
+  if ('linkLabelKeysProperty' in modelLike) delete modelLike.linkLabelKeysProperty;
 
-  modelLike.nodeDataArray = Array.isArray(modelLike.nodeDataArray) ? modelLike.nodeDataArray : [];
-  modelLike.linkDataArray = Array.isArray(modelLike.linkDataArray) ? modelLike.linkDataArray : [];
+  let nodes: any[] = Array.isArray(modelLike.nodeDataArray) ? modelLike.nodeDataArray as any[] : [];
+  let links: any[] = Array.isArray(modelLike.linkDataArray) ? modelLike.linkDataArray as any[] : [];
+  modelLike.nodeDataArray = nodes;
+  modelLike.linkDataArray = links;
 
-  const used = new Set<number>();
-  let nextKey = 1;
-  for (const n of modelLike.nodeDataArray) {
-    if (typeof n.key !== 'number') {
-      while (used.has(nextKey)) nextKey++;
-      n.key = nextKey++;
+  const cleanedNodes: any[] = [];
+  for (const node of nodes as any[]) {
+    const k = Number(node?.key);
+    node.key = Number.isFinite(k) ? k : undefined;
+
+    if (typeof node?.name === 'string' && node.name.trim()) {
+      if ('category' in node) delete node.category;
+      if (!Array.isArray(node.attributes)) node.attributes = [];
+      if (!Array.isArray(node.methods))    node.methods    = [];
+      cleanedNodes.push(node);
     }
-    used.add(n.key);
+  }
+  nodes = cleanedNodes;
+  modelLike.nodeDataArray = nodes;
+
+  const usedKeys = new Set<number>();
+  for (const n of nodes as any[]) {
+    const nk = typeof n.key === 'number' ? n.key as number : NaN;
+    if (!Number.isNaN(nk)) usedKeys.add(nk);
+  }
+  let nextNodeKey = (usedKeys.size ? Math.max(...Array.from(usedKeys)) : 0) + 1;
+  for (const n of nodes as any[]) {
+    if (typeof n.key !== 'number') {
+      while (usedKeys.has(nextNodeKey)) nextNodeKey++;
+      n.key = nextNodeKey++;
+      usedKeys.add(n.key as number);
+    }
   }
 
-  const nodeKeys = new Set(modelLike.nodeDataArray.map((n: any) => n.key));
-  modelLike.linkDataArray = modelLike.linkDataArray
-    .filter((l: any) => nodeKeys.has(l.from) && nodeKeys.has(l.to))
-    .map((l: any, i: number) => {
-      if (typeof l.key !== 'number') l.key = i + 1;
+  const byKey = new Map<number, any>();
+  for (const n of nodes as any[]) byKey.set(n.key as number, n);
 
-      // Normaliza multiplicidades si quieres default
-      if (!l.fromMult) l.fromMult = '1';
-      if (!l.toMult)   l.toMult   = '1';
+  const isManyToken = (t: string) =>
+    /\*/.test(t) || /[NM]/i.test(t) || (/\d+/.test(t) && Number(t) > 1);
+  const normMult = (m?: string) => {
+    if (!m) return '';
+    const s = String(m).trim();
+    if (/^\d+\.\.\*$/.test(s) || /^\d+\.\.[NnMm\*]$/.test(s)) return '*';
+    if (/^\*$/i.test(s) || /^[NnMm]$/.test(s)) return '*';
+    if (/^\d+$/.test(s)) return Number(s) > 1 ? '*' : '1';
+    if (/^[01]\.\.[01]$/.test(s)) return s === '1..1' ? '1' : '*';
+    return isManyToken(s) ? '*' : '1';
+  };
 
-      // Traduce formas "1:N", "N:1", etc., si vinieran
-      const rel = String(l.relationship || '').toUpperCase().replace(/\s/g, '');
-      if (rel === '1:N' || rel === '1..N' || rel === '1:*') {
-        l.relationship = 'OneToMany';
-        l.fromMult = l.fromMult || '1';
-        l.toMult   = l.toMult   || '*';
-      } else if (rel === 'N:1' || rel === '*:1') {
-        l.relationship = 'OneToMany';
-        l.fromMult = l.fromMult || '*';
-        l.toMult   = l.toMult   || '1';
-      } else if (rel === '1:1') {
-        l.relationship = 'OneToOne';
-        l.fromMult = l.fromMult || '1';
-        l.toMult   = l.toMult   || '1';
-      } else if (rel === 'N:N' || rel === '*:*' || rel === 'M:N' || rel === 'N:M') {
-        l.relationship = 'ManyToMany';
-        l.fromMult = l.fromMult || '*';
-        l.toMult   = l.toMult   || '*';
-      }
+  const parseRel = (rawRel: string) => {
+    const R = String(rawRel || '').trim().toUpperCase().replace(/\s/g, '');
+    if (!R) return '';
+    if (R === '1:1' || R === '1..1') return 'OneToOne';
+    if (R === '*:*' || R === 'N:N' || R === 'M:N' || R === 'N:M') return 'ManyToMany';
+    if (R === '1:*' || R === '1..*' || R === '1:N' || R === '*:1' || R === 'N:1'  || R === 'M:1') return 'OneToMany';
+    const m = R.match(/^([0-9NM\*]+)(?::|\.{2})([0-9NM\*]+)$/);
+    if (m) {
+      const leftMany  = isManyToken(m[1]);
+      const rightMany = isManyToken(m[2]);
+      if (leftMany && rightMany) return 'ManyToMany';
+      if (!leftMany && !rightMany) return 'OneToOne';
+      return 'OneToMany';
+    }
+    return '';
+  };
 
-      // ⚠️ NUEVO: flag para ocultar label central si no hay nada que mostrar
-      const hasCenter =
-        !!(l.relationship || l.label || l.centerText);
-      l._showCenterLabel = hasCenter;
-
-      return l;
+  const looksLikeFkName = (s: string) => /(_id|id)$/.test(String(s || '').toLowerCase());
+  const nodeHasFk = (n: any, otherName?: string) => {
+    if (!n || !Array.isArray(n.attributes)) return false;
+    const oname = String(otherName || '').toLowerCase();
+    return n.attributes.some((a: any) => {
+      const nm = String(a?.name || '').toLowerCase();
+      return !!a?.foreignKey || looksLikeFkName(nm) ||
+             (oname && nm.includes(oname) && looksLikeFkName(nm));
     });
+  };
 
+  const nodeKeys = new Set<number>((nodes as any[]).map((n: any) => n.key as number));
+  const validPorts = new Set<string>(['T', 'L', 'R', 'B']);
+  const normalizedLinks: any[] = [];
+  let autoLinkKey = -1;
+
+  for (const link of links as any[]) {
+    const l: any = { ...link };
+
+    const lk = Number(l?.key);
+    const lf = Number(l?.from);
+    const lt = Number(l?.to);
+    l.key  = Number.isFinite(lk) ? lk : autoLinkKey--;
+    l.from = Number.isFinite(lf) ? lf : NaN;
+    l.to   = Number.isFinite(lt) ? lt : NaN;
+
+    if ('labelKeys'     in l) delete l.labelKeys;
+    if ('linkLabelKeys' in l) delete l.linkLabelKeys;
+
+    if (l.fromPort && !validPorts.has(String(l.fromPort))) delete l.fromPort;
+    if (l.toPort   && !validPorts.has(String(l.toPort)))   delete l.toPort;
+
+    const canon = parseRel(l.relationship);
+    if (canon) l.relationship = canon;
+
+    if (l.fromMult) l.fromMult = normMult(l.fromMult);
+    if (l.toMult)   l.toMult   = normMult(l.toMult);
+
+    const fromNode = byKey.get(l.from as number);
+    const toNode   = byKey.get(l.to   as number);
+    const hintFrom = String(l.fromText || '').toLowerCase();
+    const hintTo   = String(l.toText   || '').toLowerCase();
+    const fromLooksFK = looksLikeFkName(hintFrom) || nodeHasFk(fromNode, toNode?.name);
+    const toLooksFK   = looksLikeFkName(hintTo)   || nodeHasFk(toNode,   fromNode?.name);
+
+    const needInfer = !(l.fromMult && l.toMult) || (l.relationship === 'OneToOne' && (fromLooksFK || toLooksFK));
+    if (needInfer) {
+      if (fromLooksFK && !toLooksFK)      { l.fromMult = '*'; l.toMult = '1'; }
+      else if (toLooksFK && !fromLooksFK) { l.fromMult = '1'; l.toMult = '*'; }
+      else if (fromLooksFK && toLooksFK)  { l.fromMult = '*'; l.toMult = '*'; }
+      else {
+        if (l.relationship === 'ManyToMany')      { l.fromMult='*'; l.toMult='*'; }
+        else if (l.relationship === 'OneToMany')  { l.fromMult='1'; l.toMult='*'; }
+        else                                      { l.fromMult='1'; l.toMult='1'; }
+      }
+    }
+
+    const fm = l.fromMult || '1';
+    const tm = l.toMult   || '1';
+    if (fm === '*' && tm === '*')      l.relationship = 'ManyToMany';
+    else if (fm === '1' && tm === '1') l.relationship = 'OneToOne';
+    else                               l.relationship = 'OneToMany';
+
+    if (typeof l.styleScale === 'undefined') l.styleScale = 1.6;
+
+    if (Number.isFinite(l.from) && Number.isFinite(l.to) &&
+        nodeKeys.has(l.from as number) && nodeKeys.has(l.to as number)) {
+      normalizedLinks.push(l);
+    }
+  }
+
+  modelLike.linkDataArray = normalizedLinks;
   modelLike.linkKeyProperty = 'key';
   return modelLike;
 }
+
+
+
 
 
   deleteSelected(): void {

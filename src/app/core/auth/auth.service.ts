@@ -15,7 +15,7 @@ export class AuthService {
     return this.http.post<LoginResponse>(`${this.ApiUrl}/auth/login`,credentials)
   }
   signUp(user:UserPostParams){
-    return this.http.post<UserPostResponse>(`${this.ApiUrl}/auth/addUser`,user);
+    return this.http.post<UserPostResponse>(`${this.ApiUrl}/user/addUser`,user);
   }
   getUserByEmail(email:string){
     return this.http.get<GetUserByEmailResponse>(`${this.ApiUrl}/user/byEmail`,{

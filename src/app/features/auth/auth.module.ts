@@ -9,7 +9,7 @@ import { AuthRoutingModule } from './auth-routing.module';
 import { AuthSigninComponent } from './pages/auth-signin/auth-signin.component';
 import { AuthSignupComponent } from './pages/auth-signup/auth-signup.component';
 import { NgModule } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MaterialModule } from '../../../material.module';
 
 // Material (AJUSTA esta ruta si estás fuera de `src/app`)
@@ -24,7 +24,7 @@ import { MaterialModule } from '../../../material.module';
     CommonModule,
     FormsModule,
     AuthRoutingModule,
-    MaterialModule
+    MaterialModule,ReactiveFormsModule
   ]
 })
 export class AuthModule {}
