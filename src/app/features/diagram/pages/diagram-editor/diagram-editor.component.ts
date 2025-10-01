@@ -91,7 +91,7 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
   aiMessages: AiMessage[] = [];
 
   /* ===== Config ===== */
-  private baseURL = 'http://localhost:3000/api';
+  private baseURL = 'https://back-alpire-8o9uk.ondigitalocean.app/api';
   private sessionId!: number;
   private userId!: number;
   private token = '';
