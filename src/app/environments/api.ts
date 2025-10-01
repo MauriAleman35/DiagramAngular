@@ -1,4 +1,4 @@
 export const envUrl={
-    url:'http://localhost:3000/api',
+    url:'https://backend-carla-akfug.ondigitalocean.app/api',
     type:'development'
 }
