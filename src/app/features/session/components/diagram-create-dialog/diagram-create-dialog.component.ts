@@ -24,9 +24,9 @@ export class DiagramCreateDialogComponent {
     if (this.form.invalid) return;
 
     const session: SessionParamsPost = {
-      idHost: this.data.idHost,
+  
       name: this.form.value.name!,
-      description: this.form.value.description!
+      description: this.form.value.description!,    idHost: this.data.idHost,
     };
 
     this.dialogRef.close(session);

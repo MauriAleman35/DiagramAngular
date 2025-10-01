@@ -1,4 +1,4 @@
 export const envUrl={
-    url:'https://backend-carla-akfug.ondigitalocean.app/api',
+    url:'https://back-alpire-8o9uk.ondigitalocean.app/api',
     type:'development'
 }
