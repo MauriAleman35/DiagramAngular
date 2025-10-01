@@ -1,14 +1,5 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "angular.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist/diagramador-angular/browser"
-      }
-    }
-  ],
   "routes": [
     { "src": "/(.*)", "dest": "/index.html" }
   ]
