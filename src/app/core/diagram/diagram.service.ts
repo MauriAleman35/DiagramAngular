@@ -3,6 +3,7 @@ import { HttpClient, HttpResponse } from '@angular/common/http';
 import { envUrl } from '../../environments/api';
 import { AiDiagramRequest, AiDiagramResponse, DiagramPostParams } from '../interfaces/diagram';
 import { catchError, map, Observable, of, throwError, tap } from 'rxjs'; // 👈 agrega tap
+import { DiagramEnvelope, GoJsModel } from '../interfaces/image';
 
 @Injectable({ providedIn: 'root' })
 export class DiagramService {
@@ -20,7 +21,17 @@ export class DiagramService {
       })
     );
   }
+importDiagramFromImage(file: File) {
+  const form = new FormData();
+  form.append('file', file);
+  return this.http.post<DiagramEnvelope>(`${this.ApiUrl}/diagrams/diagram-from-image`, form);
+}
 
+// Guardar (update) atajando el wrapper
+saveDiagram(sessionId: number, model: GoJsModel) {
+  const payload: DiagramPostParams = { sessionId, data: model };
+  return this.updateDiagram(payload);
+}
   createDiagram(diagram: DiagramPostParams) {
     return this.http.post(`${this.ApiUrl}/diagrams/create`, diagram);
   }

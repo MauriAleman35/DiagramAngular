@@ -1,4 +1,4 @@
 export const envUrl={
-    url:'https://back-alpire-8o9uk.ondigitalocean.app/api',
+    url:'http://localhost:3000/api',
     type:'development'
 }

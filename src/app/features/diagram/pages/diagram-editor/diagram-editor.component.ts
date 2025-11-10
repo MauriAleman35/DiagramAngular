@@ -31,6 +31,8 @@ import {
   FormGroup,
   Validators,
 } from '@angular/forms';
+import { ImageImportDialogComponent, ImageImportResult } from '../../components/image-import-dialog/image-import-dialog.component';
+import { MatDialog } from '@angular/material/dialog';
 
 /* =======================
  *   Tipos / Interfaces
@@ -149,7 +151,8 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
     private route: ActivatedRoute,
     private router: Router,
     private diagramService: DiagramService,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    private dialog:MatDialog
   ) {}
 
   /* =======================
@@ -183,6 +186,29 @@ export class DiagramEditorComponent implements OnInit, AfterViewInit, OnDestroy 
       visibility: ['public', Validators.required],
     });
   }
+openImportDialog(): void {
+  const ref = this.dialog.open<ImageImportDialogComponent, void, ImageImportResult>(
+    ImageImportDialogComponent,
+    { width: '520px', disableClose: true, autoFocus: false }
+  );
+
+  ref.afterClosed().subscribe(result => {
+    if (!result || !result.success || !result.modelEnvelope) return;
+
+    const model = result.modelEnvelope.data;
+    this.isExporting = true;                 // reutiliza tu overlay si quieres
+
+    this.diagramService.saveDiagram(this.sessionId, model).subscribe({
+      next: () => {
+        this.diagramExists = true;
+        this.loadDiagram();                  // ← refresca la pantalla al terminar
+      },
+      error: (err) => console.error('Error guardando diagrama importado:', err),
+      complete: () => { this.isExporting = false; }
+    });
+  });
+}
+
 
   ngAfterViewInit(): void {
     this.initDiagram();

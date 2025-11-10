@@ -1,0 +1,41 @@
+<h2 mat-dialog-title>Importar diagrama desde imagen</h2>
+
+<div mat-dialog-content class="import-body">
+  <!-- Zona de Drop / Click -->
+  <div class="dropzone" (drop)="onDrop($event)" (dragover)="onDragOver($event)">
+    <input #fileInput type="file" accept="image/*" (change)="onFileChange($event)" hidden />
+    <div class="dropzone-inner" (click)="fileInput.click()">
+      <mat-icon>cloud_upload</mat-icon>
+      <p>
+        Arrastra una imagen aquí o
+        <span class="link">haz clic para seleccionar</span>
+      </p>
+      <small>(PNG / JPG / JPEG)</small>
+    </div>
+  </div>
+
+  <!-- Preview -->
+  <div *ngIf="file" class="preview">
+    <div class="preview-header">
+      <span class="filename" [title]="file?.name">{{ file?.name }}</span>
+      <button mat-icon-button color="warn" (click)="clear()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="preview-img" *ngIf="previewUrl">
+      <img [src]="previewUrl" alt="Vista previa" />
+    </div>
+  </div>
+
+  <!-- Loading / Error -->
+  <mat-progress-bar *ngIf="uploading" mode="indeterminate"></mat-progress-bar>
+  <div *ngIf="errorMsg" class="error">{{ errorMsg }}</div>
+</div>
+
+<div mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()" [disabled]="uploading">Cancelar</button>
+  <button mat-raised-button color="primary" (click)="import()" [disabled]="!file || uploading">
+    Importar
+  </button>
+</div>
