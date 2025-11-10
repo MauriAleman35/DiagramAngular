@@ -1,4 +1,4 @@
 export const envUrl={
-    url:'http://localhost:3000/api',
-    type:'development'
+    url:'https://diagram-backend-prod-22dry.ondigitalocean.app/api',
+    type:'production'
 }
