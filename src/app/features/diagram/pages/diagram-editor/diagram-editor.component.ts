@@ -1353,27 +1353,27 @@ sendAi() {
           text: tips.length ? 'He actualizado el diagrama. Recomendaciones:' : 'He actualizado el diagrama.',
           suggestions: tips
         });
+        this.loadDiagram();
+        // try {
+        //   // Lo que realmente usaremos para render
+        //   let raw: any = resp?.updatedModelJson || '{}';
 
-        try {
-          // Lo que realmente usaremos para render
-          let raw: any = resp?.updatedModelJson || '{}';
+        //   // Puede venir como string con ```json ... ```
+        //   if (typeof raw === 'string') {
+        //     // quitar fences si existen
+        //     raw = raw.replace(/```json|```/g, '').trim();
+        //     raw = JSON.parse(raw);
+        //   }
 
-          // Puede venir como string con ```json ... ```
-          if (typeof raw === 'string') {
-            // quitar fences si existen
-            raw = raw.replace(/```json|```/g, '').trim();
-            raw = JSON.parse(raw);
-          }
+        //   // Puede venir con { model: { data: {...} } } o { data: {...} }
+        //   if (raw?.model?.data) raw = raw.model.data;
+        //   else if (raw?.data)   raw = raw.data;
 
-          // Puede venir con { model: { data: {...} } } o { data: {...} }
-          if (raw?.model?.data) raw = raw.model.data;
-          else if (raw?.data)   raw = raw.data;
-
-          this.renderFromAi(raw);
-        } catch (e) {
-          console.error('Render IA error:', e);
-          this.aiMessages.push({ role: 'ai', text: 'No pude renderizar el modelo devuelto.' });
-        }
+        //   this.renderFromAi(raw);
+        // } catch (e) {
+        //   console.error('Render IA error:', e);
+        //   this.aiMessages.push({ role: 'ai', text: 'No pude renderizar el modelo devuelto.' });
+        // }
       },
       error: (err) => {
         this.aiMessages.push({
