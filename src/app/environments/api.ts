@@ -1,4 +1,4 @@
 export const envUrl={
-    url:'https://diagram-backend-prod-22dry.ondigitalocean.app/api',
+    url:'https://diagram-backend-bd-auolj.ondigitalocean.app/api',
     type:'production'
 }
